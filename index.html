@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2563eb">
+<title>Fisher 627 Regulator Selector</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #273449;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #2563eb;
+    --accent-light: #3b82f6;
+    --ok: #22c55e;
+    --fail: #ef4444;
+    --warn: #f59e0b;
+    --interp: #1e3a5f;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 1.25rem; font-weight: 700; color: #fff; }
+  header p { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 16px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 700px) { main { grid-template-columns: 1fr; } }
+
+  /* ── Form ── */
+  .form-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    position: sticky;
+    top: 16px;
+  }
+  .form-panel h2 { font-size: 0.9rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 16px; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+  .field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .field input, .field select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    width: 100%;
+    transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--accent-light);
+    box-shadow: 0 0 0 2px rgba(59,130,246,.2);
+  }
+
+  #sgRow { display: none; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  button[type=submit] {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 11px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  button[type=submit]:hover { background: var(--accent-light); }
+
+  /* ── Results ── */
+  #results { min-height: 60px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+  .card.error { border-color: var(--fail); color: var(--fail); }
+
+  .spring-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .spring-badge { font-size: 0.78rem; font-weight: 700; color: #fff; padding: 3px 9px; border-radius: 12px; }
+  .model-tag { font-size: 0.85rem; color: var(--muted); }
+
+  .recommend {
+    background: rgba(37,99,235,.1);
+    border: 1px solid rgba(59,130,246,.3);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .rec-title { font-size: 0.9rem; color: var(--accent-light); margin-bottom: 8px; }
+  .rec-stats { display: flex; gap: 18px; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; }
+  .stat label { font-size: 0.72rem; color: var(--muted); }
+  .stat val { font-size: 1rem; font-weight: 700; color: var(--text); }
+
+  /* Capacity table */
+  .table-wrap { overflow-x: auto; margin-bottom: 8px; }
+  .cap-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+  .cap-table th {
+    background: var(--surface2);
+    padding: 7px 10px;
+    text-align: center;
+    border: 1px solid var(--border);
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .cap-table td {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    text-align: center;
+    vertical-align: middle;
+  }
+  .cap-table .set-label { text-align: left; font-weight: 500; min-width: 190px; }
+  .cap-table .sub { color: var(--muted); font-size: 0.75em; display: block; }
+  .interp-row { background: var(--interp); }
+  .interp-row td { color: #93c5fd; font-weight: 600; }
+
+  .table-note { font-size: 0.72rem; color: var(--muted); margin-bottom: 10px; }
+
+  /* Detail table */
+  details { margin-top: 10px; }
+  details summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--accent-light);
+    padding: 4px 0;
+    user-select: none;
+  }
+  .detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    margin-top: 8px;
+    white-space: nowrap;
+  }
+  .detail-table th {
+    background: var(--surface2);
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    font-weight: 600;
+    color: var(--muted);
+    text-align: left;
+  }
+  .detail-table td { padding: 5px 8px; border: 1px solid var(--border); }
+  .row-rec { background: rgba(34,197,94,.08); }
+  .row-warn { opacity: .55; }
+  .ok { color: var(--ok); }
+  .fail { color: var(--fail); }
+
+  .error { color: var(--fail); padding: 10px; }
+
+  /* placeholder */
+  .placeholder {
+    color: var(--muted);
+    font-size: 0.88rem;
+    padding: 30px 0;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Fisher 627 Series Regulator Selector</h1>
+  <p>Bulletin 71.1 — Capacity, Interpolation &amp; PSV Sizing Tool</p>
+</header>
+
+<main>
+  <!-- ── Input Form ── -->
+  <form class="form-panel" id="calcForm">
+    <h2>Inputs</h2>
+
+    <div class="field">
+      <label>Model</label>
+      <select id="model">
+        <option value="627">627</option>
+        <option value="627M">627M</option>
+        <option value="627H">627H</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Body Size</label>
+      <select id="bodySize"></select>
+    </div>
+
+    <div class="field">
+      <label>Spring Range</label>
+      <select id="spring"></select>
+    </div>
+
+    <hr class="divider">
+
+    <div class="field">
+      <label>Set Pressure (outlet, psig)</label>
+      <input type="number" id="setPressure" min="1" max="600" step="1" placeholder="e.g. 60" required>
+    </div>
+
+    <div class="field">
+      <label>Maximum Inlet Pressure (psig)</label>
+      <input type="number" id="maxInlet" min="1" max="700" step="1" placeholder="e.g. 150" required>
+    </div>
+
+    <div class="field">
+      <label>Operating Inlet Pressure (psig)</label>
+      <input type="number" id="operatingInlet" min="1" max="700" step="1" placeholder="e.g. 100" required>
+    </div>
+
+    <hr class="divider">
+
+    <div class="field">
+      <label>Fluid</label>
+      <select id="fluid">
+        <option value="air">Air (SG = 1.000)</option>
+        <option value="nitrogen">Nitrogen (SG = 0.967)</option>
+        <option value="naturalgas">Natural Gas (specify SG)</option>
+      </select>
+    </div>
+
+    <div class="field" id="sgRow">
+      <label>Specific Gravity (natural gas, rel. to air)</label>
+      <input type="number" id="sgInput" min="0.5" max="1.2" step="0.001" placeholder="e.g. 0.60">
+    </div>
+
+    <div class="field">
+      <label>Required Flow (SCFM) — optional</label>
+      <input type="number" id="reqFlow" min="0" step="0.1" placeholder="Leave blank to see all">
+    </div>
+
+    <div class="field">
+      <label>Internal Relief Required?</label>
+      <select id="needRelief">
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+      </select>
+    </div>
+
+    <button type="submit">Calculate →</button>
+  </form>
+
+  <!-- ── Results Panel ── -->
+  <div id="results">
+    <div class="placeholder">Enter specifications and click Calculate →</div>
+  </div>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
