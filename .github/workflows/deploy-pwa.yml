@@ -2,7 +2,7 @@ name: Deploy SwissCheesePWA to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [claude/focused-pascal-ms8q8e]
     paths:
       - 'SwissCheesePWA/**'
       - '.github/workflows/deploy-pwa.yml'
