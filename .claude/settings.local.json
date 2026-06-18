@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(mkdir -p /home/user/Claude/bowtie-app/src/main/export /home/user/Claude/bowtie-app/src/renderer/src/store /home/user/Claude/bowtie-app/src/renderer/src/components/nodes /home/user/Claude/bowtie-app/src/renderer/src/components/panels /home/user/Claude/bowtie-app/src/renderer/src/components/toolbar /home/user/Claude/bowtie-app/src/renderer/src/hooks /home/user/Claude/bowtie-app/src/preload /home/user/Claude/bowtie-app/resources && ls /home/user/Claude/bowtie-app/)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}
