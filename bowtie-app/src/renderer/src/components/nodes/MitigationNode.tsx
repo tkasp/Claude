@@ -1,5 +1,6 @@
 import React from 'react'
 import { Handle, Position } from '@xyflow/react'
+import { ClipboardList } from 'lucide-react'
 import { useProjectStore } from '../../store/projectStore'
 import { EFFECTIVENESS_COLORS } from './BarrierNode'
 
@@ -11,10 +12,12 @@ interface MitigationNodeData {
   effectiveness: string
   isSECE: boolean
   seceId: string
+  actionCount: number
 }
 
 export function MitigationNode({ data }: { data: MitigationNodeData }): React.ReactElement {
   const setSelectedNode = useProjectStore((s) => s.setSelectedNode)
+  const setActionsTarget = useProjectStore((s) => s.setActionsTarget)
   const selectedNode = useProjectStore((s) => s.selectedNode)
   const isSelected =
     selectedNode?.kind === 'mitigation' &&
@@ -34,6 +37,15 @@ export function MitigationNode({ data }: { data: MitigationNodeData }): React.Re
           mitigationId: data.mitigationId
         })
       }
+      onDoubleClick={() =>
+        setActionsTarget({
+          kind: 'mitigation',
+          bowtieId: data.bowtieId,
+          consequenceId: data.consequenceId,
+          mitigationId: data.mitigationId
+        })
+      }
+      title="Double-click to manage actions"
       style={{
         width: 150,
         minHeight: 56,
@@ -71,6 +83,29 @@ export function MitigationNode({ data }: { data: MitigationNodeData }): React.Re
           }}
         >
           {data.seceId ? `SECE #${data.seceId}` : 'SECE'}
+        </div>
+      )}
+      {data.actionCount > 0 && (
+        <div
+          title={`${data.actionCount} action(s)`}
+          style={{
+            position: 'absolute',
+            bottom: -8,
+            right: -6,
+            background: '#7c3aed',
+            color: '#ffffff',
+            fontSize: 8,
+            fontWeight: 800,
+            padding: '1px 4px',
+            borderRadius: 3,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <ClipboardList size={9} />
+          {data.actionCount}
         </div>
       )}
       <span>{data.label}</span>

@@ -1,11 +1,17 @@
 import ExcelJS from 'exceljs'
 
+interface BarrierAction {
+  number: number
+  text: string
+  dueDate: string
+}
 interface Barrier {
   label: string
   effectiveness: string
   effectivenessDescription: string
   isSECE: boolean
   seceId: string
+  actions?: BarrierAction[]
 }
 interface Cause {
   label: string
@@ -15,6 +21,20 @@ interface Consequence {
   label: string
   severity: string
   mitigations: Barrier[]
+}
+
+const SEVERITY_RANK: Record<string, number> = {
+  Catastrophic: 5,
+  Major: 4,
+  Moderate: 3,
+  Minor: 2,
+  Negligible: 1
+}
+
+function severityLabel(severity: string): string {
+  if (!severity) return ''
+  const rank = SEVERITY_RANK[severity]
+  return rank ? `${rank} - ${severity}` : severity
 }
 interface TitleBlock {
   documentNumber: string
@@ -149,7 +169,8 @@ export async function generateExcel(project: Project): Promise<Buffer> {
       for (const barrier of cause.barriers) pushRow(cause.label, 'Barrier', barrier, '')
     }
     for (const con of b.consequences) {
-      for (const mit of con.mitigations) pushRow(con.label, 'Mitigation', mit, con.severity)
+      for (const mit of con.mitigations)
+        pushRow(con.label, 'Mitigation', mit, severityLabel(con.severity))
     }
 
     sheet.addRow([])
@@ -159,8 +180,76 @@ export async function generateExcel(project: Project): Promise<Buffer> {
   addProjectHeader()
   for (const b of project.bowties) addBowtieReportBlock(b)
 
+  addActionsSheet(wb, project)
+
   const buffer = await wb.xlsx.writeBuffer()
   return Buffer.from(buffer)
+}
+
+const ACTION_HEADERS = [
+  'Action #',
+  'Bowtie',
+  'Type',
+  'Barrier / Mitigation',
+  'Threat / Consequence',
+  'Action Description',
+  'Due Date'
+]
+const ACTION_COL_WIDTHS = [10, 22, 12, 28, 28, 50, 14]
+
+function addActionsSheet(wb: ExcelJS.Workbook, project: Project): void {
+  const sheet = wb.addWorksheet('Actions')
+  sheet.columns = ACTION_COL_WIDTHS.map((w) => ({ width: w }))
+
+  const header = sheet.addRow(ACTION_HEADERS)
+  header.eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } }
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
+    cell.border = thinBorder('FF000000')
+  })
+  header.height = 24
+
+  const pushActions = (
+    bowtieName: string,
+    type: 'Barrier' | 'Mitigation',
+    item: Barrier,
+    parentLabel: string
+  ): void => {
+    for (const action of item.actions ?? []) {
+      const row = sheet.addRow([
+        action.number,
+        bowtieName,
+        type,
+        item.label,
+        parentLabel,
+        action.text,
+        action.dueDate
+      ])
+      row.eachCell((cell) => {
+        cell.alignment = { vertical: 'middle', wrapText: true }
+        cell.border = thinBorder('FFCBD5E1')
+      })
+    }
+  }
+
+  let any = false
+  for (const b of project.bowties) {
+    for (const cause of b.causes)
+      for (const barrier of cause.barriers) {
+        if (barrier.actions?.length) any = true
+        pushActions(b.name, 'Barrier', barrier, cause.label)
+      }
+    for (const con of b.consequences)
+      for (const mit of con.mitigations) {
+        if (mit.actions?.length) any = true
+        pushActions(b.name, 'Mitigation', mit, con.label)
+      }
+  }
+
+  if (!any) {
+    sheet.addRow(['No actions have been recorded.']).font = { italic: true, color: { argb: 'FF94A3B8' } }
+  }
 }
 
 function thinBorder(argb: string): Partial<ExcelJS.Borders> {

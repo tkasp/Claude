@@ -5,6 +5,7 @@ import type {
   Project,
   Bowtie,
   Barrier,
+  BarrierAction,
   Consequence,
   Mitigation,
   TitleBlock,
@@ -13,6 +14,11 @@ import type {
   SelectedNodeType,
   ActiveView
 } from './types'
+
+// Target identifies a single barrier or mitigation for action editing.
+export type ActionTarget =
+  | { kind: 'barrier'; bowtieId: string; causeId: string; barrierId: string }
+  | { kind: 'mitigation'; bowtieId: string; consequenceId: string; mitigationId: string }
 
 function emptyTitleBlock(): TitleBlock {
   return { documentNumber: '', documentName: '', revBy: '', revDate: '', revNumber: '' }
@@ -143,6 +149,18 @@ interface WorkspaceState {
   // Batch-create bowtie stubs from HAZID import
   batchAddBowties: (projectId: string, stubs: Array<{ name: string; hazardId: string; hazardName: string; topEvent: string }>) => void
 
+  // Actions on barriers / mitigations
+  actionsTarget: ActionTarget | null
+  setActionsTarget: (target: ActionTarget | null) => void
+  addAction: (projectId: string, target: ActionTarget) => void
+  updateAction: (
+    projectId: string,
+    target: ActionTarget,
+    actionId: string,
+    updates: Partial<BarrierAction>
+  ) => void
+  deleteAction: (projectId: string, target: ActionTarget, actionId: string) => void
+
   // Selection
   setSelectedNode: (node: SelectedNodeType | null) => void
 
@@ -158,10 +176,42 @@ export const useProjectStore = create<WorkspaceState>()(
     const findBowtie = (s: WorkspaceState, projectId: string, bowtieId: string): Bowtie | undefined =>
       find(s, projectId)?.bowties.find((b) => b.id === bowtieId)
 
+    // Resolve the barrier or mitigation referenced by an ActionTarget.
+    const findActionItem = (
+      s: WorkspaceState,
+      projectId: string,
+      target: ActionTarget
+    ): Barrier | Mitigation | undefined => {
+      const bt = findBowtie(s, projectId, target.bowtieId)
+      if (!bt) return undefined
+      if (target.kind === 'barrier') {
+        return bt.causes
+          .find((c) => c.id === target.causeId)
+          ?.barriers.find((b) => b.id === target.barrierId)
+      }
+      return bt.consequences
+        .find((c) => c.id === target.consequenceId)
+        ?.mitigations.find((m) => m.id === target.mitigationId)
+    }
+
+    // Next unique action number across every barrier/mitigation in the project.
+    const nextActionNumber = (project: Project): number => {
+      let max = 0
+      const scan = (items: Barrier[]): void => {
+        for (const it of items) for (const a of it.actions ?? []) if (a.number > max) max = a.number
+      }
+      for (const bt of project.bowties) {
+        for (const c of bt.causes) scan(c.barriers)
+        for (const c of bt.consequences) scan(c.mitigations)
+      }
+      return max + 1
+    }
+
     return {
       projects: [],
       activeView: { kind: 'welcome' },
       selectedNode: null,
+      actionsTarget: null,
 
       addProject: (project) =>
         set((s) => {
@@ -335,7 +385,8 @@ export const useProjectStore = create<WorkspaceState>()(
               effectiveness: '',
               effectivenessDescription: '',
               isSECE: false,
-              seceId: ''
+              seceId: '',
+              actions: []
             })
         }),
 
@@ -385,7 +436,8 @@ export const useProjectStore = create<WorkspaceState>()(
               effectiveness: '',
               effectivenessDescription: '',
               isSECE: false,
-              seceId: ''
+              seceId: '',
+              actions: []
             })
         }),
 
@@ -417,6 +469,38 @@ export const useProjectStore = create<WorkspaceState>()(
           const last = p.bowties[p.bowties.length - 1]
           if (last) s.activeView = { kind: 'bowtie', projectId, bowtieId: last.id }
           s.selectedNode = null
+        }),
+
+      setActionsTarget: (target) =>
+        set((s) => {
+          s.actionsTarget = target
+        }),
+
+      addAction: (projectId, target) =>
+        set((s) => {
+          const p = find(s, projectId)
+          const item = findActionItem(s, projectId, target)
+          if (!p || !item) return
+          if (!item.actions) item.actions = []
+          item.actions.push({
+            id: uuid(),
+            number: nextActionNumber(p),
+            text: '',
+            dueDate: ''
+          })
+        }),
+
+      updateAction: (projectId, target, actionId, updates) =>
+        set((s) => {
+          const item = findActionItem(s, projectId, target)
+          const action = item?.actions?.find((a) => a.id === actionId)
+          if (action) Object.assign(action, updates)
+        }),
+
+      deleteAction: (projectId, target, actionId) =>
+        set((s) => {
+          const item = findActionItem(s, projectId, target)
+          if (item?.actions) item.actions = item.actions.filter((a) => a.id !== actionId)
         }),
 
       setSelectedNode: (node) =>

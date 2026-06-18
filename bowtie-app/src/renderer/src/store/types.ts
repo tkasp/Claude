@@ -11,6 +11,13 @@ export interface Hazard {
   name: string // e.g. "Lifting operations"
 }
 
+export interface BarrierAction {
+  id: string
+  number: number // unique action number across the project
+  text: string
+  dueDate: string // ISO date string (yyyy-mm-dd) or ''
+}
+
 export interface Barrier {
   id: string
   label: string
@@ -18,6 +25,7 @@ export interface Barrier {
   effectivenessDescription: string
   isSECE: boolean
   seceId: string
+  actions: BarrierAction[]
 }
 
 export type Mitigation = Barrier

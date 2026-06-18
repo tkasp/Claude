@@ -1,5 +1,6 @@
 import React from 'react'
 import { Handle, Position } from '@xyflow/react'
+import { ClipboardList } from 'lucide-react'
 import { useProjectStore } from '../../store/projectStore'
 
 interface BarrierNodeData {
@@ -10,6 +11,7 @@ interface BarrierNodeData {
   effectiveness: string
   isSECE: boolean
   seceId: string
+  actionCount: number
 }
 
 export const EFFECTIVENESS_COLORS: Record<string, string> = {
@@ -20,6 +22,7 @@ export const EFFECTIVENESS_COLORS: Record<string, string> = {
 
 export function BarrierNode({ data }: { data: BarrierNodeData }): React.ReactElement {
   const setSelectedNode = useProjectStore((s) => s.setSelectedNode)
+  const setActionsTarget = useProjectStore((s) => s.setActionsTarget)
   const selectedNode = useProjectStore((s) => s.selectedNode)
   const isSelected =
     selectedNode?.kind === 'barrier' &&
@@ -39,6 +42,15 @@ export function BarrierNode({ data }: { data: BarrierNodeData }): React.ReactEle
           barrierId: data.barrierId
         })
       }
+      onDoubleClick={() =>
+        setActionsTarget({
+          kind: 'barrier',
+          bowtieId: data.bowtieId,
+          causeId: data.causeId,
+          barrierId: data.barrierId
+        })
+      }
+      title="Double-click to manage actions"
       style={{
         width: 150,
         minHeight: 56,
@@ -76,6 +88,29 @@ export function BarrierNode({ data }: { data: BarrierNodeData }): React.ReactEle
           }}
         >
           {data.seceId ? `SECE #${data.seceId}` : 'SECE'}
+        </div>
+      )}
+      {data.actionCount > 0 && (
+        <div
+          title={`${data.actionCount} action(s)`}
+          style={{
+            position: 'absolute',
+            bottom: -8,
+            right: -6,
+            background: '#7c3aed',
+            color: '#ffffff',
+            fontSize: 8,
+            fontWeight: 800,
+            padding: '1px 4px',
+            borderRadius: 3,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <ClipboardList size={9} />
+          {data.actionCount}
         </div>
       )}
       <span>{data.label}</span>

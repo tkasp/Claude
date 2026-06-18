@@ -1,8 +1,7 @@
 import React from 'react'
 import { useProjectStore } from '../../store/projectStore'
 import type { Barrier, Consequence } from '../../store/types'
-
-const SEVERITY_OPTIONS = ['Catastrophic', 'Major', 'Moderate', 'Minor', 'Negligible'] as const
+import { SEVERITY_OPTIONS, severityLabel } from '../../lib/severity'
 const EFFECTIVENESS_OPTIONS: Array<Barrier['effectiveness']> = [
   'Effective',
   'Partially Effective',
@@ -17,6 +16,18 @@ const EFF_COLORS: Record<string, string> = {
 const labelCls = 'text-[11px] font-semibold uppercase tracking-wide text-gray-500 mt-3 mb-1'
 const inputCls =
   'w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-blue-500'
+
+// Defined at module scope so its identity is stable across renders. When this
+// lived inside NodeEditPanel, every keystroke created a new component type,
+// remounting the subtree and stealing focus from the input after one character.
+function Wrap({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
+  return (
+    <div className="w-72 shrink-0 bg-gray-50 border-l border-gray-200 p-4 overflow-y-auto">
+      <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+      {children}
+    </div>
+  )
+}
 
 export function NodeEditPanel(): React.ReactElement {
   const selectedNode = useProjectStore((s) => s.selectedNode)
@@ -35,13 +46,6 @@ export function NodeEditPanel(): React.ReactElement {
 
   const bowtie = store.getBowtie(projectId, selectedNode.bowtieId)
   if (!bowtie) return <div className="w-72 shrink-0 bg-gray-50 border-l border-gray-200" />
-
-  const Wrap = ({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement => (
-    <div className="w-72 shrink-0 bg-gray-50 border-l border-gray-200 p-4 overflow-y-auto">
-      <h3 className="text-sm font-bold text-gray-800">{title}</h3>
-      {children}
-    </div>
-  )
 
   if (selectedNode.kind === 'hazard') {
     return (
@@ -131,7 +135,7 @@ export function NodeEditPanel(): React.ReactElement {
           <option value="">— Select —</option>
           {SEVERITY_OPTIONS.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {severityLabel(s)}
             </option>
           ))}
         </select>
@@ -163,6 +167,14 @@ export function NodeEditPanel(): React.ReactElement {
         title="Barrier"
         item={barrier}
         onUpdate={(u) => store.updateBarrier(projectId, bowtie.id, cause.id, barrier.id, u)}
+        onManageActions={() =>
+          store.setActionsTarget({
+            kind: 'barrier',
+            bowtieId: bowtie.id,
+            causeId: cause.id,
+            barrierId: barrier.id
+          })
+        }
         onDelete={() => {
           store.deleteBarrier(projectId, bowtie.id, cause.id, barrier.id)
           store.setSelectedNode(null)
@@ -180,6 +192,14 @@ export function NodeEditPanel(): React.ReactElement {
         title="Mitigation"
         item={mit}
         onUpdate={(u) => store.updateMitigation(projectId, bowtie.id, con.id, mit.id, u)}
+        onManageActions={() =>
+          store.setActionsTarget({
+            kind: 'mitigation',
+            bowtieId: bowtie.id,
+            consequenceId: con.id,
+            mitigationId: mit.id
+          })
+        }
         onDelete={() => {
           store.deleteMitigation(projectId, bowtie.id, con.id, mit.id)
           store.setSelectedNode(null)
@@ -195,11 +215,13 @@ function BarrierForm({
   title,
   item,
   onUpdate,
+  onManageActions,
   onDelete
 }: {
   title: string
   item: Barrier
   onUpdate: (u: Partial<Barrier>) => void
+  onManageActions: () => void
   onDelete: () => void
 }): React.ReactElement {
   return (
@@ -256,7 +278,14 @@ function BarrierForm({
       />
 
       <button
-        className="mt-4 w-full bg-red-800 hover:bg-red-900 text-white text-xs font-semibold rounded py-2"
+        className="mt-4 w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold rounded py-2"
+        onClick={onManageActions}
+      >
+        Manage Actions{item.actions?.length ? ` (${item.actions.length})` : ''}
+      </button>
+
+      <button
+        className="mt-2 w-full bg-red-800 hover:bg-red-900 text-white text-xs font-semibold rounded py-2"
         onClick={onDelete}
       >
         Delete {title}

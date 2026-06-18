@@ -1,6 +1,7 @@
 import React from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { useProjectStore } from '../../store/projectStore'
+import { severityLabel } from '../../lib/severity'
 
 interface ConsequenceNodeData {
   bowtieId: string
@@ -69,7 +70,7 @@ export function ConsequenceNode({ data }: { data: ConsequenceNodeData }): React.
             fontWeight: 700
           }}
         >
-          {data.severity}
+          {severityLabel(data.severity)}
         </div>
       )}
       <Handle type="target" position={Position.Left} id="left" style={{ opacity: 0 }} />

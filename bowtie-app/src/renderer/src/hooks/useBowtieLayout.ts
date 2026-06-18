@@ -85,7 +85,8 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
             label: barrier.label,
             effectiveness: barrier.effectiveness,
             isSECE: barrier.isSECE,
-            seceId: barrier.seceId
+            seceId: barrier.seceId,
+            actionCount: barrier.actions?.length ?? 0
           },
           draggable: false
         })
@@ -148,7 +149,8 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
             label: mit.label,
             effectiveness: mit.effectiveness,
             isSECE: mit.isSECE,
-            seceId: mit.seceId
+            seceId: mit.seceId,
+            actionCount: mit.actions?.length ?? 0
           },
           draggable: false
         })

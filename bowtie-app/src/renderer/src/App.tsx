@@ -8,10 +8,12 @@ import { NodeEditPanel } from './components/panels/NodeEditPanel'
 import { NewProjectModal } from './components/NewProjectModal'
 import { ProjectSettingsView, BowtieSettingsView } from './components/SettingsView'
 import { HazidImportModal } from './components/HazidImportModal'
+import { ActionsModal } from './components/ActionsModal'
 
 export default function App(): React.ReactElement {
   const store = useProjectStore()
   const activeView = useProjectStore((s) => s.activeView)
+  const actionsTarget = useProjectStore((s) => s.actionsTarget)
   const [showNewProject, setShowNewProject] = useState(false)
   const [hazidImport, setHazidImport] = useState<{
     projectId: string
@@ -98,6 +100,13 @@ export default function App(): React.ReactElement {
           projectId={hazidImport.projectId}
           attachment={hazidImport.attachment}
           onClose={() => setHazidImport(null)}
+        />
+      )}
+      {actionsTarget && activeView.kind === 'bowtie' && (
+        <ActionsModal
+          projectId={activeView.projectId}
+          target={actionsTarget}
+          onClose={() => store.setActionsTarget(null)}
         />
       )}
     </div>

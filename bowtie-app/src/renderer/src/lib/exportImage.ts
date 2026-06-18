@@ -1,5 +1,5 @@
 import { toPng } from 'html-to-image'
-import { getNodesBounds, getViewportForBounds, type ReactFlowInstance } from '@xyflow/react'
+import { getNodesBounds, type ReactFlowInstance } from '@xyflow/react'
 import type { Bowtie, Project } from '../store/types'
 
 interface TitleField {
@@ -31,18 +31,22 @@ function composeWithTitleBlock(
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
+      // The bowtie image may have been rendered at a higher pixel ratio; scale
+      // the footer to match so everything stays aligned and crisp.
+      const scale = imgW > 0 ? img.width / imgW : 1
       const headingH = 30
       const tableH = 56
       const footerH = headingH + tableH
       const canvas = document.createElement('canvas')
-      canvas.width = imgW
-      canvas.height = imgH + footerH
+      canvas.width = img.width
+      canvas.height = img.height + Math.round(footerH * scale)
       const ctx = canvas.getContext('2d')
       if (!ctx) return reject(new Error('no 2d context'))
+      ctx.scale(scale, scale)
 
-      // White background + bowtie image
+      // White background + bowtie image (work in logical/unscaled coordinates)
       ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.fillRect(0, 0, canvas.width / scale, canvas.height / scale)
       ctx.drawImage(img, 0, 0, imgW, imgH)
 
       // Heading strip
@@ -85,11 +89,15 @@ export async function captureBowtieDataUrl(
 ): Promise<string> {
   const nodes = instance.getNodes()
   const bounds = getNodesBounds(nodes)
+
+  // Capture the full extent at zoom = 1 with a fixed pixel margin so nothing is
+  // ever cropped. Translating by (-bounds.x + margin) puts the top-left node at
+  // the margin offset; the canvas is sized to fit the entire diagram.
   const margin = 80
   const imgW = Math.max(Math.ceil(bounds.width) + margin * 2, 700)
   const imgH = Math.max(Math.ceil(bounds.height) + margin * 2, 420)
-  // Final arg is a padding *ratio*, not pixels.
-  const viewport = getViewportForBounds(bounds, imgW, imgH, 0.2, 2, 0.08)
+  const tx = -bounds.x + margin
+  const ty = -bounds.y + margin
 
   const viewportEl = wrapperEl.querySelector('.react-flow__viewport') as HTMLElement | null
   if (!viewportEl) throw new Error('viewport element not found')
@@ -98,10 +106,11 @@ export async function captureBowtieDataUrl(
     backgroundColor: '#ffffff',
     width: imgW,
     height: imgH,
+    pixelRatio: 2,
     style: {
       width: `${imgW}px`,
       height: `${imgH}px`,
-      transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`
+      transform: `translate(${tx}px, ${ty}px) scale(1)`
     }
   })
 
