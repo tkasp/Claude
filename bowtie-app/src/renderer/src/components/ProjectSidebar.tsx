@@ -56,14 +56,14 @@ export function ProjectSidebar({ onNewProject, onOpenProject, onImportHazid }: S
   }
 
   return (
-    <div className="w-64 shrink-0 bg-gray-100 border-r border-gray-300 flex flex-col">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-300">
-        <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Facilities</span>
+    <div className="w-64 shrink-0 bg-slate-800 border-r border-slate-700 flex flex-col">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Facilities</span>
         <div className="flex gap-1">
-          <button title="Open project" onClick={onOpenProject} className="text-gray-500 hover:text-gray-900">
+          <button title="Open project" onClick={onOpenProject} className="text-slate-400 hover:text-white">
             <Folder size={15} />
           </button>
-          <button title="New project" onClick={onNewProject} className="text-gray-500 hover:text-gray-900">
+          <button title="New project" onClick={onNewProject} className="text-slate-400 hover:text-white">
             <Plus size={16} />
           </button>
         </div>
@@ -71,7 +71,7 @@ export function ProjectSidebar({ onNewProject, onOpenProject, onImportHazid }: S
 
       <div className="flex-1 overflow-y-auto py-1 text-sm">
         {projects.length === 0 && (
-          <div className="px-3 py-6 text-center text-gray-400 text-xs">
+          <div className="px-3 py-6 text-center text-slate-500 text-xs">
             No facilities open.
             <br />
             Use + to create one.
@@ -113,7 +113,7 @@ function Row({
   return (
     <div
       className={`group flex items-center gap-1.5 pr-2 py-1 cursor-pointer ${
-        active ? 'bg-blue-100 text-blue-900' : 'text-gray-700 hover:bg-gray-200'
+        active ? 'bg-blue-700 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'
       }`}
       style={{ paddingLeft: 8 + depth * 14 }}
       onClick={onClick}
@@ -163,7 +163,7 @@ function ProjectTree({
                 e.stopPropagation()
                 store.setActiveView({ kind: 'projectSettings', projectId: project.id })
               }}
-              className="text-gray-500 hover:text-gray-900"
+              className="text-slate-400 hover:text-white"
             >
               <Settings size={13} />
             </button>
@@ -173,7 +173,7 @@ function ProjectTree({
                 e.stopPropagation()
                 store.closeProject(project.id)
               }}
-              className="text-gray-500 hover:text-red-600"
+              className="text-slate-400 hover:text-red-400"
             >
               <X size={13} />
             </button>
@@ -196,7 +196,7 @@ function ProjectTree({
                   e.stopPropagation()
                   onAddAttachment(project.id, 'drawing')
                 }}
-                className="text-gray-500 hover:text-gray-900"
+                className="text-slate-400 hover:text-white"
               >
                 <Plus size={13} />
               </button>
@@ -207,7 +207,7 @@ function ProjectTree({
               <Row
                 key={a.id}
                 depth={2}
-                icon={<FileText size={13} className="text-gray-500" />}
+                icon={<FileText size={13} className="text-slate-400" />}
                 label={a.name}
                 onClick={() => onOpenAttachment(project.id, a.id)}
                 actions={
@@ -217,7 +217,7 @@ function ProjectTree({
                       e.stopPropagation()
                       store.removeAttachment(project.id, 'drawing', a.id)
                     }}
-                    className="text-gray-500 hover:text-red-600"
+                    className="text-slate-400 hover:text-red-400"
                   >
                     <Trash2 size={12} />
                   </button>
@@ -238,7 +238,7 @@ function ProjectTree({
                   e.stopPropagation()
                   onAddAttachment(project.id, 'hazid')
                 }}
-                className="text-gray-500 hover:text-gray-900"
+                className="text-slate-400 hover:text-white"
               >
                 <Plus size={13} />
               </button>
@@ -261,7 +261,7 @@ function ProjectTree({
                           e.stopPropagation()
                           if (a.dataBase64) onImportHazid({ name: a.name, dataBase64: a.dataBase64 })
                         }}
-                        className="text-gray-500 hover:text-purple-600"
+                        className="text-slate-400 hover:text-purple-400"
                       >
                         <Wand2 size={12} />
                       </button>
@@ -272,7 +272,7 @@ function ProjectTree({
                         e.stopPropagation()
                         store.removeAttachment(project.id, 'hazid', a.id)
                       }}
-                      className="text-gray-500 hover:text-red-600"
+                      className="text-slate-400 hover:text-red-400"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -294,7 +294,7 @@ function ProjectTree({
                   e.stopPropagation()
                   store.addBowtie(project.id)
                 }}
-                className="text-gray-500 hover:text-gray-900"
+                className="text-slate-400 hover:text-white"
               >
                 <Plus size={13} />
               </button>
@@ -321,7 +321,7 @@ function ProjectTree({
                           bowtieId: bt.id
                         })
                       }}
-                      className="text-gray-500 hover:text-gray-900"
+                      className="text-slate-400 hover:text-white"
                     >
                       <Settings size={12} />
                     </button>
@@ -331,7 +331,7 @@ function ProjectTree({
                         e.stopPropagation()
                         store.duplicateBowtie(project.id, bt.id)
                       }}
-                      className="text-gray-500 hover:text-blue-600"
+                      className="text-slate-400 hover:text-blue-400"
                     >
                       <Copy size={12} />
                     </button>
@@ -341,7 +341,7 @@ function ProjectTree({
                         e.stopPropagation()
                         if (project.bowties.length > 1) store.deleteBowtie(project.id, bt.id)
                       }}
-                      className="text-gray-500 hover:text-red-600"
+                      className="text-slate-400 hover:text-red-400"
                     >
                       <Trash2 size={12} />
                     </button>

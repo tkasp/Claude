@@ -103,6 +103,19 @@ ipcMain.handle('open-attachment', async (_e, payload: { name: string; ext: strin
   return { success: true }
 })
 
+// Save a PDF report (base64) generated in the renderer to a chosen location.
+ipcMain.handle('save-pdf', async (_e, base64: string, defaultName: string) => {
+  const { filePath, canceled } = await dialog.showSaveDialog(mainWindow!, {
+    title: 'Save PDF Report',
+    defaultPath: `${sanitize(defaultName)}.pdf`,
+    filters: [{ name: 'PDF Document', extensions: ['pdf'] }]
+  })
+  if (canceled || !filePath) return { success: false }
+  await fs.writeFile(filePath, Buffer.from(base64, 'base64'))
+  shell.showItemInFolder(filePath)
+  return { success: true, filePath }
+})
+
 // Export the active bowtie PNG (already composed with the title block) to disk.
 ipcMain.handle('export-png', async (_e, dataUrl: string, name: string) => {
   const { filePath, canceled } = await dialog.showSaveDialog(mainWindow!, {

@@ -17,5 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Export the project's barriers & mitigations to an Excel report.
   exportExcel: (json: string) => ipcRenderer.invoke('export-excel', json),
   // Parse a HAZID Excel (base64) and return structured rows for the import modal.
-  parseHazid: (base64: string) => ipcRenderer.invoke('parse-hazid', base64)
+  parseHazid: (base64: string) => ipcRenderer.invoke('parse-hazid', base64),
+  // Save a PDF (base64) to a user-chosen path.
+  savePdf: (base64: string, name: string) => ipcRenderer.invoke('save-pdf', base64, name)
 })

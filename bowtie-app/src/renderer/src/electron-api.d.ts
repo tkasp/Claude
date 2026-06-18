@@ -48,6 +48,7 @@ export interface ElectronAPI {
   exportPng: (dataUrl: string, name: string) => Promise<{ success: boolean; filePath?: string }>
   exportExcel: (json: string) => Promise<{ success: boolean; filePath?: string }>
   parseHazid: (base64: string) => Promise<{ success: boolean; result?: HazidParseResult; error?: string }>
+  savePdf: (base64: string, name: string) => Promise<{ success: boolean; filePath?: string }>
 }
 
 declare global {

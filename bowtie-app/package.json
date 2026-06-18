@@ -1,7 +1,7 @@
 {
-  "name": "bowtie-app",
+  "name": "swiss-cheese",
   "version": "1.0.0",
-  "description": "Bowtie Risk Diagram Desktop Application",
+  "description": "Swiss-Cheese: Process Safety Bowtie Risk Analysis",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -18,6 +18,8 @@
     "exceljs": "^4.4.0",
     "html-to-image": "^1.11.11",
     "immer": "^10.1.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.511.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

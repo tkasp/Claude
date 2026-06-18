@@ -3,6 +3,8 @@ import type { Node, Edge } from '@xyflow/react'
 import type { Bowtie } from '../store/types'
 
 const NODE_HEIGHT = 60
+// Explicit width/height on every node so getNodesBounds computes correct right/bottom edges.
+const NODE_WIDTH = 150
 const CENTER_X = 760
 const TOP_EVENT_SIZE = 150
 const TOP_EVENT_Y = 360
@@ -33,6 +35,8 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
       type: 'hazard',
       position: { x: CENTER_X - 10, y: HAZARD_Y },
       data: { bowtieId: bowtie.id, hazard: bowtie.hazard },
+      width: NODE_WIDTH + 20,
+      height: 60,
       draggable: false
     })
 
@@ -42,6 +46,8 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
       type: 'topEvent',
       position: { x: CENTER_X, y: TOP_EVENT_Y },
       data: { bowtieId: bowtie.id, label: bowtie.topEvent.label },
+      width: TOP_EVENT_SIZE,
+      height: TOP_EVENT_SIZE,
       draggable: false
     })
 
@@ -68,6 +74,8 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
         type: 'cause',
         position: { x: CAUSE_X, y: rowY - NODE_HEIGHT / 2 },
         data: { bowtieId: bowtie.id, causeId: cause.id, label: cause.label },
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
         draggable: false
       })
 
@@ -88,6 +96,8 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
             seceId: barrier.seceId,
             actionCount: barrier.actions?.length ?? 0
           },
+          width: NODE_WIDTH,
+          height: NODE_HEIGHT,
           draggable: false
         })
         edges.push({
@@ -102,7 +112,6 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
         prevId = barrier.id
       })
 
-      // Connect last node in the chain to the top event.
       edges.push({
         id: `e-${prevId}-te-${ci}`,
         source: prevId,
@@ -131,12 +140,13 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
           label: con.label,
           severity: con.severity
         },
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT + 22,  // includes severity badge
         draggable: false
       })
 
       let prevId = bowtie.topEvent.id
       con.mitigations.forEach((mit, mi) => {
-        // Position mitigations stepping rightward from just after the top event
         const px = TOP_EVENT_CX + 120 + mi * BARRIER_STEP
         nodes.push({
           id: mit.id,
@@ -152,6 +162,8 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
             seceId: mit.seceId,
             actionCount: mit.actions?.length ?? 0
           },
+          width: NODE_WIDTH,
+          height: NODE_HEIGHT,
           draggable: false
         })
         edges.push({
