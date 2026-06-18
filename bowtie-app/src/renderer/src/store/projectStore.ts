@@ -1,264 +1,416 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { v4 as uuid } from 'uuid'
-import type { Project, Bowtie, Cause, Consequence, Barrier, Mitigation, SelectedNodeType } from './types'
+import type {
+  Project,
+  Bowtie,
+  Barrier,
+  Consequence,
+  Mitigation,
+  TitleBlock,
+  Attachment,
+  AttachmentCategory,
+  SelectedNodeType,
+  ActiveView
+} from './types'
 
-function createDefaultBowtie(name: string): Bowtie {
+function emptyTitleBlock(): TitleBlock {
+  return { documentNumber: '', documentName: '', revBy: '', revDate: '', revNumber: '' }
+}
+
+export function createDefaultBowtie(name: string, titleBlock?: TitleBlock): Bowtie {
   return {
     id: uuid(),
     name,
+    hazard: { hazardId: '', name: '' },
     topEvent: { id: uuid(), label: 'Top Event' },
     causes: [],
     consequences: [],
-    titleBlock: {
-      documentNumber: '',
-      documentName: '',
-      revBy: '',
-      revDate: '',
-      revNumber: ''
-    }
+    titleBlock: titleBlock ? { ...titleBlock } : emptyTitleBlock()
   }
 }
 
-function createDefaultProject(): Project {
-  const bowtie = createDefaultBowtie('Bowtie 1')
+export interface NewProjectInput {
+  name: string
+  location: string
+  description: string
+  titleBlock: TitleBlock
+}
+
+export function createProjectObject(input: NewProjectInput): Project {
+  const bowtie = createDefaultBowtie('Bowtie 1', input.titleBlock)
   return {
     id: uuid(),
-    name: 'New Project',
+    name: input.name,
+    location: input.location,
+    description: input.description,
     createdAt: new Date().toISOString(),
-    bowties: [bowtie]
+    titleBlock: { ...input.titleBlock },
+    bowties: [bowtie],
+    drawings: [],
+    hazid: []
   }
 }
 
-interface ProjectState {
-  project: Project
-  activeBowtieId: string | null
+function regenerateBowtieIds(b: Bowtie): Bowtie {
+  const copy: Bowtie = JSON.parse(JSON.stringify(b))
+  copy.id = uuid()
+  copy.topEvent.id = uuid()
+  copy.causes = copy.causes.map((c) => ({
+    ...c,
+    id: uuid(),
+    barriers: c.barriers.map((bar) => ({ ...bar, id: uuid() }))
+  }))
+  copy.consequences = copy.consequences.map((c) => ({
+    ...c,
+    id: uuid(),
+    mitigations: c.mitigations.map((m) => ({ ...m, id: uuid() }))
+  }))
+  return copy
+}
+
+interface WorkspaceState {
+  projects: Project[]
+  activeView: ActiveView
   selectedNode: SelectedNodeType | null
 
-  // Project actions
-  setProjectName: (name: string) => void
-  setProjectFilePath: (path: string) => void
-  loadProject: (project: Project) => void
+  // Workspace / project lifecycle
+  addProject: (project: Project) => void
+  closeProject: (projectId: string) => void
+  loadProject: (project: Project) => void // open from a bundle; replaces if same id
+  setProjectFilePath: (projectId: string, path: string) => void
+  updateProjectMeta: (
+    projectId: string,
+    updates: Partial<Pick<Project, 'name' | 'location' | 'description'>>
+  ) => void
+  updateProjectTitleBlock: (projectId: string, updates: Partial<TitleBlock>) => void
 
-  // Bowtie actions
-  setActiveBowtie: (id: string) => void
-  addBowtie: () => void
-  duplicateBowtie: (id: string) => void
-  deleteBowtie: (id: string) => void
-  renameBowtie: (id: string, name: string) => void
-  updateTitleBlock: (bowtieId: string, updates: Partial<Bowtie['titleBlock']>) => void
-  updateTopEvent: (bowtieId: string, label: string) => void
+  // Navigation
+  setActiveView: (view: ActiveView) => void
+  openBowtie: (projectId: string, bowtieId: string) => void
 
-  // Cause actions
-  addCause: (bowtieId: string) => void
-  updateCause: (bowtieId: string, causeId: string, label: string) => void
-  deleteCause: (bowtieId: string, causeId: string) => void
+  // Attachments
+  addAttachment: (projectId: string, attachment: Attachment) => void
+  removeAttachment: (projectId: string, category: AttachmentCategory, attachmentId: string) => void
 
-  // Consequence actions
-  addConsequence: (bowtieId: string) => void
-  updateConsequence: (bowtieId: string, consequenceId: string, updates: Partial<Consequence>) => void
-  deleteConsequence: (bowtieId: string, consequenceId: string) => void
+  // Bowtie lifecycle
+  addBowtie: (projectId: string) => void
+  duplicateBowtie: (projectId: string, bowtieId: string) => void
+  deleteBowtie: (projectId: string, bowtieId: string) => void
+  renameBowtie: (projectId: string, bowtieId: string, name: string) => void
+  updateBowtieTitleBlock: (projectId: string, bowtieId: string, updates: Partial<TitleBlock>) => void
+  updateHazard: (projectId: string, bowtieId: string, updates: Partial<Bowtie['hazard']>) => void
+  updateTopEvent: (projectId: string, bowtieId: string, label: string) => void
 
-  // Barrier actions
-  addBarrier: (bowtieId: string, causeId: string) => void
-  updateBarrier: (bowtieId: string, causeId: string, barrierId: string, updates: Partial<Barrier>) => void
-  deleteBarrier: (bowtieId: string, causeId: string, barrierId: string) => void
+  // Causes / barriers
+  addCause: (projectId: string, bowtieId: string) => void
+  updateCause: (projectId: string, bowtieId: string, causeId: string, label: string) => void
+  deleteCause: (projectId: string, bowtieId: string, causeId: string) => void
+  addBarrier: (projectId: string, bowtieId: string, causeId: string) => void
+  updateBarrier: (
+    projectId: string,
+    bowtieId: string,
+    causeId: string,
+    barrierId: string,
+    updates: Partial<Barrier>
+  ) => void
+  deleteBarrier: (projectId: string, bowtieId: string, causeId: string, barrierId: string) => void
 
-  // Mitigation actions
-  addMitigation: (bowtieId: string, consequenceId: string) => void
-  updateMitigation: (bowtieId: string, consequenceId: string, mitigationId: string, updates: Partial<Mitigation>) => void
-  deleteMitigation: (bowtieId: string, consequenceId: string, mitigationId: string) => void
+  // Consequences / mitigations
+  addConsequence: (projectId: string, bowtieId: string) => void
+  updateConsequence: (
+    projectId: string,
+    bowtieId: string,
+    consequenceId: string,
+    updates: Partial<Consequence>
+  ) => void
+  deleteConsequence: (projectId: string, bowtieId: string, consequenceId: string) => void
+  addMitigation: (projectId: string, bowtieId: string, consequenceId: string) => void
+  updateMitigation: (
+    projectId: string,
+    bowtieId: string,
+    consequenceId: string,
+    mitigationId: string,
+    updates: Partial<Mitigation>
+  ) => void
+  deleteMitigation: (
+    projectId: string,
+    bowtieId: string,
+    consequenceId: string,
+    mitigationId: string
+  ) => void
 
   // Selection
   setSelectedNode: (node: SelectedNodeType | null) => void
 
   // Helpers
-  getActiveBowtie: () => Bowtie | undefined
+  getProject: (projectId: string) => Project | undefined
+  getBowtie: (projectId: string, bowtieId: string) => Bowtie | undefined
 }
 
-export const useProjectStore = create<ProjectState>()(
+export const useProjectStore = create<WorkspaceState>()(
   immer((set, get) => {
-    const project = createDefaultProject()
+    const find = (s: WorkspaceState, projectId: string): Project | undefined =>
+      s.projects.find((p) => p.id === projectId)
+    const findBowtie = (s: WorkspaceState, projectId: string, bowtieId: string): Bowtie | undefined =>
+      find(s, projectId)?.bowties.find((b) => b.id === bowtieId)
+
     return {
-      project,
-      activeBowtieId: project.bowties[0]?.id ?? null,
+      projects: [],
+      activeView: { kind: 'welcome' },
       selectedNode: null,
 
-      setProjectName: (name) =>
-        set((s) => { s.project.name = name }),
-
-      setProjectFilePath: (path) =>
-        set((s) => { s.project.filePath = path }),
-
-      loadProject: (proj) =>
+      addProject: (project) =>
         set((s) => {
-          s.project = proj
-          s.activeBowtieId = proj.bowties[0]?.id ?? null
+          s.projects.push(project)
+          const firstBowtie = project.bowties[0]
+          s.activeView = firstBowtie
+            ? { kind: 'bowtie', projectId: project.id, bowtieId: firstBowtie.id }
+            : { kind: 'projectSettings', projectId: project.id }
           s.selectedNode = null
         }),
 
-      setActiveBowtie: (id) =>
+      closeProject: (projectId) =>
         set((s) => {
-          s.activeBowtieId = id
-          s.selectedNode = null
-        }),
-
-      addBowtie: () =>
-        set((s) => {
-          const bt = createDefaultBowtie(`Bowtie ${s.project.bowties.length + 1}`)
-          s.project.bowties.push(bt)
-          s.activeBowtieId = bt.id
-          s.selectedNode = null
-        }),
-
-      duplicateBowtie: (id) =>
-        set((s) => {
-          const src = s.project.bowties.find((b) => b.id === id)
-          if (!src) return
-          const copy: Bowtie = JSON.parse(JSON.stringify(src))
-          copy.id = uuid()
-          copy.name = `${src.name} (Copy)`
-          // Regenerate all IDs
-          copy.topEvent.id = uuid()
-          copy.causes = copy.causes.map((c) => ({
-            ...c,
-            id: uuid(),
-            barriers: c.barriers.map((b) => ({ ...b, id: uuid() }))
-          }))
-          copy.consequences = copy.consequences.map((c) => ({
-            ...c,
-            id: uuid(),
-            mitigations: c.mitigations.map((m) => ({ ...m, id: uuid() }))
-          }))
-          s.project.bowties.push(copy)
-          s.activeBowtieId = copy.id
-        }),
-
-      deleteBowtie: (id) =>
-        set((s) => {
-          const idx = s.project.bowties.findIndex((b) => b.id === id)
-          if (idx === -1) return
-          s.project.bowties.splice(idx, 1)
-          if (s.activeBowtieId === id) {
-            s.activeBowtieId = s.project.bowties[0]?.id ?? null
+          s.projects = s.projects.filter((p) => p.id !== projectId)
+          if (
+            'projectId' in s.activeView &&
+            (s.activeView as { projectId?: string }).projectId === projectId
+          ) {
+            s.activeView = { kind: 'welcome' }
+            s.selectedNode = null
           }
         }),
 
-      renameBowtie: (id, name) =>
+      loadProject: (project) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === id)
+          const idx = s.projects.findIndex((p) => p.id === project.id)
+          if (idx >= 0) s.projects[idx] = project
+          else s.projects.push(project)
+          const firstBowtie = project.bowties[0]
+          s.activeView = firstBowtie
+            ? { kind: 'bowtie', projectId: project.id, bowtieId: firstBowtie.id }
+            : { kind: 'projectSettings', projectId: project.id }
+          s.selectedNode = null
+        }),
+
+      setProjectFilePath: (projectId, path) =>
+        set((s) => {
+          const p = find(s, projectId)
+          if (p) p.filePath = path
+        }),
+
+      updateProjectMeta: (projectId, updates) =>
+        set((s) => {
+          const p = find(s, projectId)
+          if (p) Object.assign(p, updates)
+        }),
+
+      updateProjectTitleBlock: (projectId, updates) =>
+        set((s) => {
+          const p = find(s, projectId)
+          if (p) Object.assign(p.titleBlock, updates)
+        }),
+
+      setActiveView: (view) =>
+        set((s) => {
+          s.activeView = view
+          s.selectedNode = null
+        }),
+
+      openBowtie: (projectId, bowtieId) =>
+        set((s) => {
+          s.activeView = { kind: 'bowtie', projectId, bowtieId }
+          s.selectedNode = null
+        }),
+
+      addAttachment: (projectId, attachment) =>
+        set((s) => {
+          const p = find(s, projectId)
+          if (!p) return
+          if (attachment.category === 'drawing') p.drawings.push(attachment)
+          else p.hazid.push(attachment)
+        }),
+
+      removeAttachment: (projectId, category, attachmentId) =>
+        set((s) => {
+          const p = find(s, projectId)
+          if (!p) return
+          if (category === 'drawing') p.drawings = p.drawings.filter((a) => a.id !== attachmentId)
+          else p.hazid = p.hazid.filter((a) => a.id !== attachmentId)
+        }),
+
+      addBowtie: (projectId) =>
+        set((s) => {
+          const p = find(s, projectId)
+          if (!p) return
+          const bt = createDefaultBowtie(`Bowtie ${p.bowties.length + 1}`, p.titleBlock)
+          p.bowties.push(bt)
+          s.activeView = { kind: 'bowtie', projectId, bowtieId: bt.id }
+          s.selectedNode = null
+        }),
+
+      duplicateBowtie: (projectId, bowtieId) =>
+        set((s) => {
+          const p = find(s, projectId)
+          const src = p?.bowties.find((b) => b.id === bowtieId)
+          if (!p || !src) return
+          const copy = regenerateBowtieIds(src)
+          copy.name = `${src.name} (Copy)`
+          const idx = p.bowties.findIndex((b) => b.id === bowtieId)
+          p.bowties.splice(idx + 1, 0, copy)
+          s.activeView = { kind: 'bowtie', projectId, bowtieId: copy.id }
+        }),
+
+      deleteBowtie: (projectId, bowtieId) =>
+        set((s) => {
+          const p = find(s, projectId)
+          if (!p) return
+          p.bowties = p.bowties.filter((b) => b.id !== bowtieId)
+          if (
+            s.activeView.kind === 'bowtie' &&
+            s.activeView.bowtieId === bowtieId
+          ) {
+            const next = p.bowties[0]
+            s.activeView = next
+              ? { kind: 'bowtie', projectId, bowtieId: next.id }
+              : { kind: 'projectSettings', projectId }
+          }
+        }),
+
+      renameBowtie: (projectId, bowtieId, name) =>
+        set((s) => {
+          const bt = findBowtie(s, projectId, bowtieId)
           if (bt) bt.name = name
         }),
 
-      updateTitleBlock: (bowtieId, updates) =>
+      updateBowtieTitleBlock: (projectId, bowtieId, updates) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
+          const bt = findBowtie(s, projectId, bowtieId)
           if (bt) Object.assign(bt.titleBlock, updates)
         }),
 
-      updateTopEvent: (bowtieId, label) =>
+      updateHazard: (projectId, bowtieId, updates) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
+          const bt = findBowtie(s, projectId, bowtieId)
+          if (bt) Object.assign(bt.hazard, updates)
+        }),
+
+      updateTopEvent: (projectId, bowtieId, label) =>
+        set((s) => {
+          const bt = findBowtie(s, projectId, bowtieId)
           if (bt) bt.topEvent.label = label
         }),
 
-      addCause: (bowtieId) =>
+      addCause: (projectId, bowtieId) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          if (!bt) return
-          bt.causes.push({ id: uuid(), label: 'New Cause', barriers: [] })
+          const bt = findBowtie(s, projectId, bowtieId)
+          if (bt) bt.causes.push({ id: uuid(), label: 'New Threat', barriers: [] })
         }),
 
-      updateCause: (bowtieId, causeId, label) =>
+      updateCause: (projectId, bowtieId, causeId, label) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          const cause = bt?.causes.find((c) => c.id === causeId)
-          if (cause) cause.label = label
+          const bt = findBowtie(s, projectId, bowtieId)
+          const c = bt?.causes.find((c) => c.id === causeId)
+          if (c) c.label = label
         }),
 
-      deleteCause: (bowtieId, causeId) =>
+      deleteCause: (projectId, bowtieId, causeId) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          if (!bt) return
-          bt.causes = bt.causes.filter((c) => c.id !== causeId)
+          const bt = findBowtie(s, projectId, bowtieId)
+          if (bt) bt.causes = bt.causes.filter((c) => c.id !== causeId)
         }),
 
-      addConsequence: (bowtieId) =>
+      addBarrier: (projectId, bowtieId, causeId) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          if (!bt) return
-          bt.consequences.push({ id: uuid(), label: 'New Consequence', severity: '', mitigations: [] })
+          const bt = findBowtie(s, projectId, bowtieId)
+          const c = bt?.causes.find((c) => c.id === causeId)
+          if (c)
+            c.barriers.push({
+              id: uuid(),
+              label: 'New Barrier',
+              effectiveness: '',
+              effectivenessDescription: '',
+              isSECE: false,
+              seceId: ''
+            })
         }),
 
-      updateConsequence: (bowtieId, consequenceId, updates) =>
+      updateBarrier: (projectId, bowtieId, causeId, barrierId, updates) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          const cons = bt?.consequences.find((c) => c.id === consequenceId)
-          if (cons) Object.assign(cons, updates)
+          const bt = findBowtie(s, projectId, bowtieId)
+          const c = bt?.causes.find((c) => c.id === causeId)
+          const bar = c?.barriers.find((b) => b.id === barrierId)
+          if (bar) Object.assign(bar, updates)
         }),
 
-      deleteConsequence: (bowtieId, consequenceId) =>
+      deleteBarrier: (projectId, bowtieId, causeId, barrierId) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          if (!bt) return
-          bt.consequences = bt.consequences.filter((c) => c.id !== consequenceId)
+          const bt = findBowtie(s, projectId, bowtieId)
+          const c = bt?.causes.find((c) => c.id === causeId)
+          if (c) c.barriers = c.barriers.filter((b) => b.id !== barrierId)
         }),
 
-      addBarrier: (bowtieId, causeId) =>
+      addConsequence: (projectId, bowtieId) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          const cause = bt?.causes.find((c) => c.id === causeId)
-          if (!cause) return
-          cause.barriers.push({ id: uuid(), label: 'New Barrier', effectiveness: '', effectivenessDescription: '', isSECE: false, seceId: '' })
+          const bt = findBowtie(s, projectId, bowtieId)
+          if (bt)
+            bt.consequences.push({ id: uuid(), label: 'New Consequence', severity: '', mitigations: [] })
         }),
 
-      updateBarrier: (bowtieId, causeId, barrierId, updates) =>
+      updateConsequence: (projectId, bowtieId, consequenceId, updates) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          const cause = bt?.causes.find((c) => c.id === causeId)
-          const barrier = cause?.barriers.find((b) => b.id === barrierId)
-          if (barrier) Object.assign(barrier, updates)
+          const bt = findBowtie(s, projectId, bowtieId)
+          const con = bt?.consequences.find((c) => c.id === consequenceId)
+          if (con) Object.assign(con, updates)
         }),
 
-      deleteBarrier: (bowtieId, causeId, barrierId) =>
+      deleteConsequence: (projectId, bowtieId, consequenceId) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          const cause = bt?.causes.find((c) => c.id === causeId)
-          if (!cause) return
-          cause.barriers = cause.barriers.filter((b) => b.id !== barrierId)
+          const bt = findBowtie(s, projectId, bowtieId)
+          if (bt) bt.consequences = bt.consequences.filter((c) => c.id !== consequenceId)
         }),
 
-      addMitigation: (bowtieId, consequenceId) =>
+      addMitigation: (projectId, bowtieId, consequenceId) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          const cons = bt?.consequences.find((c) => c.id === consequenceId)
-          if (!cons) return
-          cons.mitigations.push({ id: uuid(), label: 'New Mitigation', effectiveness: '', effectivenessDescription: '', isSECE: false, seceId: '' })
+          const bt = findBowtie(s, projectId, bowtieId)
+          const con = bt?.consequences.find((c) => c.id === consequenceId)
+          if (con)
+            con.mitigations.push({
+              id: uuid(),
+              label: 'New Mitigation',
+              effectiveness: '',
+              effectivenessDescription: '',
+              isSECE: false,
+              seceId: ''
+            })
         }),
 
-      updateMitigation: (bowtieId, consequenceId, mitigationId, updates) =>
+      updateMitigation: (projectId, bowtieId, consequenceId, mitigationId, updates) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          const cons = bt?.consequences.find((c) => c.id === consequenceId)
-          const mit = cons?.mitigations.find((m) => m.id === mitigationId)
-          if (mit) Object.assign(mit, updates)
+          const bt = findBowtie(s, projectId, bowtieId)
+          const con = bt?.consequences.find((c) => c.id === consequenceId)
+          const m = con?.mitigations.find((m) => m.id === mitigationId)
+          if (m) Object.assign(m, updates)
         }),
 
-      deleteMitigation: (bowtieId, consequenceId, mitigationId) =>
+      deleteMitigation: (projectId, bowtieId, consequenceId, mitigationId) =>
         set((s) => {
-          const bt = s.project.bowties.find((b) => b.id === bowtieId)
-          const cons = bt?.consequences.find((c) => c.id === consequenceId)
-          if (!cons) return
-          cons.mitigations = cons.mitigations.filter((m) => m.id !== mitigationId)
+          const bt = findBowtie(s, projectId, bowtieId)
+          const con = bt?.consequences.find((c) => c.id === consequenceId)
+          if (con) con.mitigations = con.mitigations.filter((m) => m.id !== mitigationId)
         }),
 
       setSelectedNode: (node) =>
-        set((s) => { s.selectedNode = node }),
+        set((s) => {
+          s.selectedNode = node
+        }),
 
-      getActiveBowtie: () => {
-        const { project, activeBowtieId } = get()
-        return project.bowties.find((b) => b.id === activeBowtieId)
-      }
+      getProject: (projectId) => get().projects.find((p) => p.id === projectId),
+      getBowtie: (projectId, bowtieId) =>
+        get()
+          .projects.find((p) => p.id === projectId)
+          ?.bowties.find((b) => b.id === bowtieId)
     }
   })
 )

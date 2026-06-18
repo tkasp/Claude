@@ -9,20 +9,12 @@ interface ConsequenceNodeData {
   severity: string
 }
 
-const severityColors: Record<string, string> = {
-  Catastrophic: 'bg-red-900/80 border-red-500',
-  Major: 'bg-orange-900/80 border-orange-500',
-  Moderate: 'bg-yellow-900/80 border-yellow-500',
-  Minor: 'bg-green-900/80 border-green-600',
-  Negligible: 'bg-gray-800 border-gray-500'
-}
-
-const severityBadgeColors: Record<string, string> = {
-  Catastrophic: 'bg-red-600',
-  Major: 'bg-orange-600',
-  Moderate: 'bg-yellow-600',
-  Minor: 'bg-green-600',
-  Negligible: 'bg-gray-600'
+const SEVERITY_COLORS: Record<string, string> = {
+  Catastrophic: '#7f1d1d',
+  Major: '#dc2626',
+  Moderate: '#f97316',
+  Minor: '#eab308',
+  Negligible: '#16a34a'
 }
 
 export function ConsequenceNode({ data }: { data: ConsequenceNodeData }): React.ReactElement {
@@ -33,18 +25,8 @@ export function ConsequenceNode({ data }: { data: ConsequenceNodeData }): React.
     selectedNode.bowtieId === data.bowtieId &&
     selectedNode.consequenceId === data.consequenceId
 
-  const colorClass = data.severity ? severityColors[data.severity] : 'bg-purple-900/70 border-purple-600'
-
   return (
     <div
-      className={`
-        flex flex-col items-center justify-center cursor-pointer select-none
-        rounded-lg border-2 px-3 py-2 gap-1
-        transition-all duration-150
-        ${colorClass}
-        ${isSelected ? 'shadow-lg shadow-purple-500/40 brightness-125' : ''}
-      `}
-      style={{ width: 140, minHeight: 55 }}
       onClick={() =>
         setSelectedNode({
           kind: 'consequence',
@@ -52,16 +34,45 @@ export function ConsequenceNode({ data }: { data: ConsequenceNodeData }): React.
           consequenceId: data.consequenceId
         })
       }
+      style={{
+        width: 150,
+        minHeight: 56,
+        background: '#dc2626',
+        border: isSelected ? '3px solid #fca5a5' : '2px solid #991b1b',
+        borderRadius: 8,
+        color: 'white',
+        cursor: 'pointer',
+        overflow: 'hidden',
+        textAlign: 'center',
+        fontSize: 12,
+        fontWeight: 600,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+      }}
     >
-      <span className="text-center text-white text-xs font-medium leading-tight">
+      <div
+        style={{
+          padding: '8px 10px',
+          minHeight: 40,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
         {data.label}
-      </span>
+      </div>
       {data.severity && (
-        <span className={`text-xs text-white px-1.5 py-0.5 rounded font-bold ${severityBadgeColors[data.severity] ?? 'bg-gray-600'}`}>
+        <div
+          style={{
+            background: SEVERITY_COLORS[data.severity] ?? '#6b7280',
+            padding: '2px 6px',
+            fontSize: 10,
+            fontWeight: 700
+          }}
+        >
           {data.severity}
-        </span>
+        </div>
       )}
-      <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+      <Handle type="target" position={Position.Left} id="left" style={{ opacity: 0 }} />
     </div>
   )
 }

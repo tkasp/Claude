@@ -18,21 +18,27 @@ export function CauseNode({ data }: { data: CauseNodeData }): React.ReactElement
 
   return (
     <div
-      className={`
-        flex items-center justify-center cursor-pointer select-none
-        rounded-lg border-2 bg-orange-900/70 min-w-[140px] px-3 py-2
-        transition-all duration-150
-        ${isSelected ? 'border-orange-400 shadow-lg shadow-orange-500/40' : 'border-orange-600'}
-      `}
-      style={{ width: 140, minHeight: 55 }}
-      onClick={() =>
-        setSelectedNode({ kind: 'cause', bowtieId: data.bowtieId, causeId: data.causeId })
-      }
+      onClick={() => setSelectedNode({ kind: 'cause', bowtieId: data.bowtieId, causeId: data.causeId })}
+      style={{
+        width: 150,
+        minHeight: 56,
+        background: '#1d4ed8',
+        border: isSelected ? '3px solid #93c5fd' : '2px solid #1e40af',
+        borderRadius: 8,
+        color: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: '8px 10px',
+        fontSize: 12,
+        fontWeight: 600,
+        cursor: 'pointer',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+      }}
     >
-      <span className="text-center text-white text-xs font-medium leading-tight">
-        {data.label}
-      </span>
-      <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+      {data.label}
+      <Handle type="source" position={Position.Right} id="right" style={{ opacity: 0 }} />
     </div>
   )
 }

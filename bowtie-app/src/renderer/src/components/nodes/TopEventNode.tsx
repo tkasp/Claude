@@ -14,20 +14,28 @@ export function TopEventNode({ data }: { data: TopEventNodeData }): React.ReactE
 
   return (
     <div
-      className={`
-        flex items-center justify-center cursor-pointer select-none
-        rounded-full border-4 bg-blue-900
-        transition-all duration-150
-        ${isSelected ? 'border-blue-400 shadow-lg shadow-blue-500/40' : 'border-blue-600'}
-      `}
-      style={{ width: 140, height: 140 }}
       onClick={() => setSelectedNode({ kind: 'topEvent', bowtieId: data.bowtieId })}
+      style={{
+        width: 150,
+        height: 150,
+        borderRadius: '50%',
+        background: 'radial-gradient(circle at 42% 35%, #fb923c 0%, #ea580c 45%, #b91c1c 100%)',
+        border: isSelected ? '4px solid #2563eb' : '4px solid #991b1b',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: 12,
+        cursor: 'pointer',
+        boxShadow: '0 4px 14px rgba(185,28,28,0.45)'
+      }}
     >
-      <span className="text-center text-white font-bold text-sm px-2 leading-tight">
+      <span style={{ color: 'white', fontWeight: 700, fontSize: 13, lineHeight: 1.25 }}>
         {data.label || 'Top Event'}
       </span>
-      <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
-      <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+      <Handle type="target" position={Position.Top} id="top" style={{ opacity: 0 }} />
+      <Handle type="target" position={Position.Left} id="left" style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Right} id="right" style={{ opacity: 0 }} />
     </div>
   )
 }

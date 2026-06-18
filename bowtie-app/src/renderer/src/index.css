@@ -9,42 +9,33 @@
 body {
   margin: 0;
   padding: 0;
-  background: #030712;
-  color: #f9fafb;
+  background: #f3f4f6;
+  color: #111827;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* React Flow overrides */
-.react-flow__renderer {
-  background: #0f172a !important;
-}
-
+.react-flow__renderer,
 .react-flow__background {
-  background: #0f172a !important;
+  background: #ffffff !important;
 }
 
 .react-flow__edge-path {
-  stroke: #4b5563 !important;
+  stroke: #374151 !important;
   stroke-width: 2 !important;
 }
 
-.react-flow__handle {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-/* Scrollbar */
+/* Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #1f2937;
+  background: #e5e7eb;
 }
 ::-webkit-scrollbar-thumb {
-  background: #4b5563;
-  border-radius: 3px;
+  background: #9ca3af;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #6b7280;

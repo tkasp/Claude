@@ -2,15 +2,20 @@ import { useMemo } from 'react'
 import type { Node, Edge } from '@xyflow/react'
 import type { Bowtie } from '../store/types'
 
-const NODE_WIDTH = 160
 const NODE_HEIGHT = 60
-const CAUSE_X = 80
-const BARRIER_OFFSET_X = 260
-const CENTER_X = 700
-const CONSEQUENCE_X = 1300
-const MITIGATION_OFFSET_X = 1120
-const V_SPACING = 110
-const TOP_EVENT_Y = 300
+const CENTER_X = 760
+const TOP_EVENT_SIZE = 150
+const TOP_EVENT_Y = 360
+const HAZARD_Y = 150
+const CAUSE_X = 60
+const CONSEQUENCE_X = 1380
+const BARRIER_STEP = 180
+const FIRST_BARRIER_X = 280
+const V_SPACING = 120
+
+// Center anchor points of the top-event circle
+const TOP_EVENT_CX = CENTER_X + TOP_EVENT_SIZE / 2
+const TOP_EVENT_CY = TOP_EVENT_Y + TOP_EVENT_SIZE / 2
 
 export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; edges: Edge[] } {
   return useMemo(() => {
@@ -19,7 +24,19 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
     const nodes: Node[] = []
     const edges: Edge[] = []
 
-    // Top Event
+    const edgeStyle = { stroke: '#374151', strokeWidth: 2 }
+
+    // Hazard box (above top event)
+    const hazardNodeId = `hazard-${bowtie.id}`
+    nodes.push({
+      id: hazardNodeId,
+      type: 'hazard',
+      position: { x: CENTER_X - 10, y: HAZARD_Y },
+      data: { bowtieId: bowtie.id, hazard: bowtie.hazard },
+      draggable: false
+    })
+
+    // Top event circle
     nodes.push({
       id: bowtie.topEvent.id,
       type: 'topEvent',
@@ -28,41 +45,39 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
       draggable: false
     })
 
-    // Causes and barriers
-    const totalCauseHeight = bowtie.causes.length > 0
-      ? (bowtie.causes.length - 1) * V_SPACING
-      : 0
-    const causeStartY = TOP_EVENT_Y - totalCauseHeight / 2
+    // Hazard -> top event connector
+    edges.push({
+      id: `e-hazard-${bowtie.id}`,
+      source: hazardNodeId,
+      target: bowtie.topEvent.id,
+      type: 'straight',
+      style: edgeStyle,
+      sourceHandle: 'bottom',
+      targetHandle: 'top'
+    })
+
+    // ----- Threats (causes) + barriers on the left -----
+    const causeCount = bowtie.causes.length
+    const causeSpan = (causeCount - 1) * V_SPACING
+    const causeStartY = TOP_EVENT_CY - causeSpan / 2
 
     bowtie.causes.forEach((cause, ci) => {
-      const causeY = causeStartY + ci * V_SPACING
-      const causeNodeId = cause.id
-
+      const rowY = causeStartY + ci * V_SPACING
       nodes.push({
-        id: causeNodeId,
+        id: cause.id,
         type: 'cause',
-        position: { x: CAUSE_X, y: causeY - NODE_HEIGHT / 2 },
+        position: { x: CAUSE_X, y: rowY - NODE_HEIGHT / 2 },
         data: { bowtieId: bowtie.id, causeId: cause.id, label: cause.label },
         draggable: false
       })
 
-      edges.push({
-        id: `edge-cause-${cause.id}`,
-        source: causeNodeId,
-        target: bowtie.topEvent.id,
-        type: 'straight',
-        style: { stroke: '#6b7280', strokeWidth: 2 }
-      })
-
-      // Barriers
+      let prevId = cause.id
       cause.barriers.forEach((barrier, bi) => {
-        const barrierX = BARRIER_OFFSET_X + bi * 180
-        const barrierId = barrier.id
-
+        const bx = FIRST_BARRIER_X + bi * BARRIER_STEP
         nodes.push({
-          id: barrierId,
+          id: barrier.id,
           type: 'barrier',
-          position: { x: barrierX, y: causeY - NODE_HEIGHT / 2 - 5 },
+          position: { x: bx, y: rowY - NODE_HEIGHT / 2 },
           data: {
             bowtieId: bowtie.id,
             causeId: cause.id,
@@ -74,116 +89,89 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
           },
           draggable: false
         })
-
-        // Edge: cause to barrier
         edges.push({
-          id: `edge-barrier-left-${barrier.id}`,
-          source: causeNodeId,
-          target: barrierId,
-          type: 'straight',
-          style: { stroke: '#6b7280', strokeWidth: 2 }
+          id: `e-${prevId}-${barrier.id}`,
+          source: prevId,
+          target: barrier.id,
+          type: 'smoothstep',
+          style: edgeStyle,
+          sourceHandle: 'right',
+          targetHandle: 'left'
         })
+        prevId = barrier.id
+      })
 
-        // Edge: barrier to top event (or next barrier)
-        if (bi === cause.barriers.length - 1) {
-          edges.push({
-            id: `edge-barrier-right-${barrier.id}`,
-            source: barrierId,
-            target: bowtie.topEvent.id,
-            type: 'straight',
-            style: { stroke: '#6b7280', strokeWidth: 2 }
-          })
-        } else {
-          const nextBarrier = cause.barriers[bi + 1]
-          edges.push({
-            id: `edge-barrier-to-next-${barrier.id}`,
-            source: barrierId,
-            target: nextBarrier.id,
-            type: 'straight',
-            style: { stroke: '#6b7280', strokeWidth: 2 }
-          })
-        }
+      // Connect last node in the chain to the top event.
+      edges.push({
+        id: `e-${prevId}-te-${ci}`,
+        source: prevId,
+        target: bowtie.topEvent.id,
+        type: 'smoothstep',
+        style: edgeStyle,
+        sourceHandle: 'right',
+        targetHandle: 'left'
       })
     })
 
-    // Consequences and mitigations
-    const totalConsHeight = bowtie.consequences.length > 0
-      ? (bowtie.consequences.length - 1) * V_SPACING
-      : 0
-    const consStartY = TOP_EVENT_Y - totalConsHeight / 2
+    // ----- Consequences + mitigations on the right -----
+    const conCount = bowtie.consequences.length
+    const conSpan = (conCount - 1) * V_SPACING
+    const conStartY = TOP_EVENT_CY - conSpan / 2
 
-    bowtie.consequences.forEach((consequence, ci) => {
-      const consY = consStartY + ci * V_SPACING
-      const consNodeId = consequence.id
-
+    bowtie.consequences.forEach((con, ci) => {
+      const rowY = conStartY + ci * V_SPACING
       nodes.push({
-        id: consNodeId,
+        id: con.id,
         type: 'consequence',
-        position: { x: CONSEQUENCE_X, y: consY - NODE_HEIGHT / 2 },
+        position: { x: CONSEQUENCE_X, y: rowY - NODE_HEIGHT / 2 },
         data: {
           bowtieId: bowtie.id,
-          consequenceId: consequence.id,
-          label: consequence.label,
-          severity: consequence.severity
+          consequenceId: con.id,
+          label: con.label,
+          severity: con.severity
         },
         draggable: false
       })
 
-      edges.push({
-        id: `edge-cons-${consequence.id}`,
-        source: bowtie.topEvent.id,
-        target: consNodeId,
-        type: 'straight',
-        style: { stroke: '#6b7280', strokeWidth: 2 }
-      })
-
-      // Mitigations
-      consequence.mitigations.forEach((mitigation, mi) => {
-        const mitX = MITIGATION_OFFSET_X - mi * 180
-        const mitId = mitigation.id
-
+      let prevId = bowtie.topEvent.id
+      con.mitigations.forEach((mit, mi) => {
+        // Position mitigations stepping rightward from just after the top event
+        const px = TOP_EVENT_CX + 120 + mi * BARRIER_STEP
         nodes.push({
-          id: mitId,
+          id: mit.id,
           type: 'mitigation',
-          position: { x: mitX, y: consY - NODE_HEIGHT / 2 - 5 },
+          position: { x: px, y: rowY - NODE_HEIGHT / 2 },
           data: {
             bowtieId: bowtie.id,
-            consequenceId: consequence.id,
-            mitigationId: mitigation.id,
-            label: mitigation.label,
-            effectiveness: mitigation.effectiveness,
-            isSECE: mitigation.isSECE,
-            seceId: mitigation.seceId
+            consequenceId: con.id,
+            mitigationId: mit.id,
+            label: mit.label,
+            effectiveness: mit.effectiveness,
+            isSECE: mit.isSECE,
+            seceId: mit.seceId
           },
           draggable: false
         })
-
-        if (mi === consequence.mitigations.length - 1) {
-          edges.push({
-            id: `edge-mit-left-${mitigation.id}`,
-            source: bowtie.topEvent.id,
-            target: mitId,
-            type: 'straight',
-            style: { stroke: '#6b7280', strokeWidth: 2 }
-          })
-        } else {
-          const prevMit = consequence.mitigations[mi + 1]
-          edges.push({
-            id: `edge-mit-prev-${mitigation.id}`,
-            source: prevMit.id,
-            target: mitId,
-            type: 'straight',
-            style: { stroke: '#6b7280', strokeWidth: 2 }
-          })
-        }
-
         edges.push({
-          id: `edge-mit-right-${mitigation.id}`,
-          source: mitId,
-          target: consNodeId,
-          type: 'straight',
-          style: { stroke: '#6b7280', strokeWidth: 2 }
+          id: `e-${prevId}-${mit.id}`,
+          source: prevId,
+          target: mit.id,
+          type: 'smoothstep',
+          style: edgeStyle,
+          sourceHandle: 'right',
+          targetHandle: 'left'
         })
+        prevId = mit.id
+      })
+
+      edges.push({
+        id: `e-${prevId}-con-${ci}`,
+        source: prevId,
+        target: con.id,
+        type: 'smoothstep',
+        style: edgeStyle,
+        sourceHandle: 'right',
+        targetHandle: 'left'
       })
     })
 

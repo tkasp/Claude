@@ -1,34 +1,89 @@
-import React from 'react'
-import { ProjectSidebar } from './components/ProjectSidebar'
+import React, { useState } from 'react'
+import { useProjectStore, createProjectObject, type NewProjectInput } from './store/projectStore'
 import { Toolbar } from './components/toolbar/Toolbar'
+import { ProjectSidebar } from './components/ProjectSidebar'
 import { BowtieCanvas } from './components/BowtieCanvas'
 import { TitleBlock } from './components/TitleBlock'
 import { NodeEditPanel } from './components/panels/NodeEditPanel'
-import { useProjectStore } from './store/projectStore'
+import { NewProjectModal } from './components/NewProjectModal'
+import { ProjectSettingsView, BowtieSettingsView } from './components/SettingsView'
 
 export default function App(): React.ReactElement {
-  const activeBowtieId = useProjectStore((s) => s.activeBowtieId)
+  const store = useProjectStore()
+  const activeView = useProjectStore((s) => s.activeView)
+  const [showNewProject, setShowNewProject] = useState(false)
 
-  return (
-    <div className="flex h-screen w-screen bg-gray-950 text-gray-100 overflow-hidden">
-      <ProjectSidebar />
+  const handleCreate = (input: NewProjectInput): void => {
+    store.addProject(createProjectObject(input))
+    setShowNewProject(false)
+  }
 
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Toolbar />
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex flex-col flex-1 overflow-hidden">
-            {activeBowtieId ? (
-              <BowtieCanvas />
-            ) : (
-              <div className="flex flex-1 items-center justify-center text-gray-500 text-lg">
-                Select or create a bowtie to get started
-              </div>
-            )}
-            {activeBowtieId && <TitleBlock />}
+  const handleOpenProject = async (): Promise<void> => {
+    const result = await window.electronAPI.openProject()
+    if (result.success && result.data) {
+      try {
+        store.loadProject(JSON.parse(result.data))
+      } catch {
+        alert('Could not read that project file.')
+      }
+    }
+  }
+
+  const renderMain = (): React.ReactElement => {
+    if (activeView.kind === 'projectSettings') {
+      return <ProjectSettingsView projectId={activeView.projectId} />
+    }
+    if (activeView.kind === 'bowtieSettings') {
+      return <BowtieSettingsView projectId={activeView.projectId} bowtieId={activeView.bowtieId} />
+    }
+    if (activeView.kind === 'bowtie') {
+      const project = store.getProject(activeView.projectId)
+      const bowtie = project?.bowties.find((b) => b.id === activeView.bowtieId)
+      if (project && bowtie) {
+        return (
+          <div className="flex flex-1 min-w-0">
+            <div className="flex flex-col flex-1 min-w-0">
+              <BowtieCanvas project={project} bowtie={bowtie} />
+              <TitleBlock project={project} bowtie={bowtie} />
+            </div>
+            <NodeEditPanel />
           </div>
-          <NodeEditPanel />
+        )
+      }
+    }
+    // Welcome
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center bg-white text-center gap-5">
+        <div className="text-2xl font-bold text-gray-800">Bowtie Builder</div>
+        <div className="text-sm text-gray-500">Create a new facility project or open an existing one.</div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowNewProject(true)}
+            className="px-5 py-2 rounded bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800"
+          >
+            New Project
+          </button>
+          <button
+            onClick={handleOpenProject}
+            className="px-5 py-2 rounded border border-gray-300 text-gray-600 text-sm hover:bg-gray-100"
+          >
+            Open Project
+          </button>
         </div>
       </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-100">
+      <Toolbar onNewProject={() => setShowNewProject(true)} onOpenProject={handleOpenProject} />
+      <div className="flex flex-1 overflow-hidden">
+        <ProjectSidebar onNewProject={() => setShowNewProject(true)} onOpenProject={handleOpenProject} />
+        {renderMain()}
+      </div>
+      {showNewProject && (
+        <NewProjectModal onCreate={handleCreate} onCancel={() => setShowNewProject(false)} />
+      )}
     </div>
   )
 }

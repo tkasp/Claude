@@ -1,8 +1,7 @@
 import React from 'react'
-import { useProjectStore } from '../store/projectStore'
-import type { TitleBlock as TitleBlockType } from '../store/types'
+import type { Bowtie, Project } from '../store/types'
 
-const FIELDS: { key: keyof TitleBlockType; label: string }[] = [
+const FIELDS: { key: keyof Bowtie['titleBlock']; label: string }[] = [
   { key: 'documentNumber', label: 'Doc No.' },
   { key: 'documentName', label: 'Document Name' },
   { key: 'revBy', label: 'Rev By' },
@@ -10,32 +9,29 @@ const FIELDS: { key: keyof TitleBlockType; label: string }[] = [
   { key: 'revNumber', label: 'Rev #' }
 ]
 
-export function TitleBlock(): React.ReactElement | null {
-  const store = useProjectStore()
-  const { project, activeBowtieId } = store
-  const bowtie = project?.bowties.find((b) => b.id === activeBowtieId)
-  if (!bowtie) return null
-
+// Read-only title block strip shown beneath the canvas. Editing happens in
+// Bowtie Settings, so these fields are intentionally greyed and non-editable.
+export function TitleBlock({
+  project,
+  bowtie
+}: {
+  project: Project
+  bowtie: Bowtie
+}): React.ReactElement {
   return (
-    <div
-      className="flex border-t border-gray-700 bg-gray-900 shrink-0"
-      style={{ height: 60 }}
-      id="title-block"
-    >
-      {FIELDS.map((f, i) => (
+    <div className="flex shrink-0 border-t-2 border-gray-300 bg-gray-100" style={{ height: 56 }} id="title-block">
+      <div className="flex flex-col justify-center px-3 border-r border-gray-300" style={{ minWidth: 150 }}>
+        <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Facility</div>
+        <div className="text-xs font-semibold text-gray-600 truncate">{project.name}</div>
+      </div>
+      {FIELDS.map((f) => (
         <div
           key={f.key}
-          className={`flex flex-col justify-center px-3 py-1 ${i < FIELDS.length - 1 ? 'border-r border-gray-700' : ''} ${f.key === 'documentName' ? 'flex-[2]' : 'flex-1'}`}
+          className="flex flex-col justify-center px-3 border-r border-gray-300 last:border-r-0"
+          style={{ flex: f.key === 'documentName' ? 2 : 1 }}
         >
-          <div className="text-gray-500 font-semibold uppercase tracking-wider mb-0.5" style={{ fontSize: 9 }}>
-            {f.label}
-          </div>
-          <input
-            value={bowtie.titleBlock[f.key]}
-            onChange={(e) => store.updateTitleBlock(bowtie.id, { [f.key]: e.target.value })}
-            placeholder={`Enter ${f.label}`}
-            className="bg-transparent border-0 border-b border-gray-700 text-white text-xs py-0.5 w-full focus:outline-none focus:border-blue-500"
-          />
+          <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">{f.label}</div>
+          <div className="text-xs text-gray-500 truncate">{bowtie.titleBlock[f.key] || '—'}</div>
         </div>
       ))}
     </div>

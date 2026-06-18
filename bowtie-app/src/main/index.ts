@@ -1,23 +1,26 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { promises as fs } from 'fs'
+import { tmpdir } from 'os'
+import { randomUUID } from 'crypto'
 import { generateExcel } from './export/excelExporter'
 
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    backgroundColor: '#1a1a2e',
+    width: 1500,
+    height: 950,
+    minWidth: 1100,
+    minHeight: 680,
+    backgroundColor: '#ffffff',
+    title: 'Bowtie Builder',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false
-    },
-    titleBarStyle: 'default',
-    title: 'Bowtie Risk Diagram'
+    }
   })
 
   if (process.env['ELECTRON_RENDERER_URL']) {
@@ -38,23 +41,34 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-// Save project
-ipcMain.handle('save-project', async (_event, projectJson: string) => {
-  const { filePath, canceled } = await dialog.showSaveDialog(mainWindow!, {
-    title: 'Save Project',
-    defaultPath: 'bowtie-project.json',
-    filters: [{ name: 'Bowtie Project', extensions: ['json'] }]
-  })
-  if (canceled || !filePath) return { success: false }
-  await fs.writeFile(filePath, projectJson, 'utf-8')
-  return { success: true, filePath }
+const DRAWING_EXTS = ['pdf', 'png', 'jpg', 'jpeg', 'dwg', 'dxf', 'tif', 'tiff', 'svg', 'docx']
+const HAZID_EXTS = ['xlsx', 'xls', 'xlsm', 'csv']
+
+function sanitize(name: string): string {
+  return name.replace(/[/\\?%*:|"<>]/g, '-')
+}
+
+// Save the entire project (JSON, with embedded base64 attachments) as a .bowtie bundle.
+ipcMain.handle('save-project', async (_e, json: string, existingPath?: string) => {
+  let target = existingPath
+  if (!target) {
+    const { filePath, canceled } = await dialog.showSaveDialog(mainWindow!, {
+      title: 'Save Project',
+      defaultPath: 'facility.bowtie',
+      filters: [{ name: 'Bowtie Project', extensions: ['bowtie'] }]
+    })
+    if (canceled || !filePath) return { success: false }
+    target = filePath
+  }
+  await fs.writeFile(target, json, 'utf-8')
+  return { success: true, filePath: target }
 })
 
-// Open project
+// Open a .bowtie bundle and return its JSON contents.
 ipcMain.handle('open-project', async () => {
   const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow!, {
     title: 'Open Project',
-    filters: [{ name: 'Bowtie Project', extensions: ['json'] }],
+    filters: [{ name: 'Bowtie Project', extensions: ['bowtie', 'json'] }],
     properties: ['openFile']
   })
   if (canceled || filePaths.length === 0) return { success: false }
@@ -62,11 +76,37 @@ ipcMain.handle('open-project', async () => {
   return { success: true, data }
 })
 
-// Export single PNG
-ipcMain.handle('export-png', async (_event, dataUrl: string, name: string) => {
+// Let the user pick a file to embed as a drawing or HAZID attachment.
+ipcMain.handle('pick-attachment', async (_e, category: 'drawing' | 'hazid') => {
+  const exts = category === 'hazid' ? HAZID_EXTS : DRAWING_EXTS
+  const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow!, {
+    title: category === 'hazid' ? 'Add HAZID File' : 'Add Drawing',
+    filters: [{ name: category === 'hazid' ? 'HAZID files' : 'Drawings', extensions: exts }],
+    properties: ['openFile']
+  })
+  if (canceled || filePaths.length === 0) return null
+  const filePath = filePaths[0]
+  const buf = await fs.readFile(filePath)
+  const name = filePath.split(/[/\\]/).pop() ?? 'file'
+  const ext = (name.split('.').pop() ?? '').toLowerCase()
+  return { id: randomUUID(), name, ext, dataBase64: buf.toString('base64') }
+})
+
+// Write an embedded attachment to a temp file and open it in the default app.
+ipcMain.handle('open-attachment', async (_e, payload: { name: string; ext: string; dataBase64: string }) => {
+  const dir = join(tmpdir(), 'bowtie-attachments')
+  await fs.mkdir(dir, { recursive: true })
+  const target = join(dir, sanitize(payload.name))
+  await fs.writeFile(target, Buffer.from(payload.dataBase64, 'base64'))
+  await shell.openPath(target)
+  return { success: true }
+})
+
+// Export the active bowtie PNG (already composed with the title block) to disk.
+ipcMain.handle('export-png', async (_e, dataUrl: string, name: string) => {
   const { filePath, canceled } = await dialog.showSaveDialog(mainWindow!, {
-    title: 'Export PNG',
-    defaultPath: `${name}.png`,
+    title: 'Export Bowtie PNG',
+    defaultPath: `${sanitize(name)}.png`,
     filters: [{ name: 'PNG Image', extensions: ['png'] }]
   })
   if (canceled || !filePath) return { success: false }
@@ -76,27 +116,8 @@ ipcMain.handle('export-png', async (_event, dataUrl: string, name: string) => {
   return { success: true, filePath }
 })
 
-// Export all bowties as PNGs to a folder
-ipcMain.handle('export-all-pngs', async (_event, files: { name: string; dataUrl: string }[]) => {
-  const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow!, {
-    title: 'Choose Export Folder',
-    properties: ['openDirectory', 'createDirectory']
-  })
-  if (canceled || filePaths.length === 0) return { success: false }
-  const folder = filePaths[0]
-  for (const file of files) {
-    const safe = file.name.replace(/[/\\?%*:|"<>]/g, '-')
-    const base64 = file.dataUrl.replace(/^data:image\/png;base64,/, '')
-    await fs.writeFile(join(folder, `${safe}.png`), Buffer.from(base64, 'base64'))
-  }
-  if (files.length > 0) {
-    shell.showItemInFolder(join(folder, files[0].name.replace(/[/\\?%*:|"<>]/g, '-') + '.png'))
-  }
-  return { success: true }
-})
-
-// Export Excel
-ipcMain.handle('export-excel', async (_event, projectJson: string) => {
+// Export the project's barriers & mitigations to an Excel report.
+ipcMain.handle('export-excel', async (_e, projectJson: string) => {
   const { filePath, canceled } = await dialog.showSaveDialog(mainWindow!, {
     title: 'Export to Excel',
     defaultPath: 'bowtie-barriers.xlsx',

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { useProjectStore } from '../../store/projectStore'
+import { EFFECTIVENESS_COLORS } from './BarrierNode'
 
 interface MitigationNodeData {
   bowtieId: string
@@ -12,12 +13,6 @@ interface MitigationNodeData {
   seceId: string
 }
 
-const effectivenessColors: Record<string, string> = {
-  Effective: 'border-green-500 bg-green-900/60',
-  'Partially Effective': 'border-yellow-500 bg-yellow-900/60',
-  Ineffective: 'border-red-500 bg-red-900/60'
-}
-
 export function MitigationNode({ data }: { data: MitigationNodeData }): React.ReactElement {
   const setSelectedNode = useProjectStore((s) => s.setSelectedNode)
   const selectedNode = useProjectStore((s) => s.selectedNode)
@@ -27,20 +22,10 @@ export function MitigationNode({ data }: { data: MitigationNodeData }): React.Re
     selectedNode.consequenceId === data.consequenceId &&
     selectedNode.mitigationId === data.mitigationId
 
-  const colorClass = data.effectiveness
-    ? effectivenessColors[data.effectiveness]
-    : 'border-gray-500 bg-gray-800'
+  const stripe = data.effectiveness ? EFFECTIVENESS_COLORS[data.effectiveness] : '#9ca3af'
 
   return (
     <div
-      className={`
-        flex flex-col items-center justify-center cursor-pointer select-none
-        border-2 px-2 py-1 gap-1 relative
-        transition-all duration-150
-        ${colorClass}
-        ${isSelected ? 'shadow-lg shadow-white/20 brightness-125' : ''}
-      `}
-      style={{ width: 130, minHeight: 60 }}
       onClick={() =>
         setSelectedNode({
           kind: 'mitigation',
@@ -49,17 +34,48 @@ export function MitigationNode({ data }: { data: MitigationNodeData }): React.Re
           mitigationId: data.mitigationId
         })
       }
+      style={{
+        width: 150,
+        minHeight: 56,
+        background: '#ffffff',
+        border: isSelected ? '3px solid #2563eb' : '1px solid #cbd5e1',
+        borderLeft: `6px solid ${stripe}`,
+        borderRadius: 6,
+        color: '#111827',
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: '8px 10px',
+        fontSize: 11,
+        fontWeight: 600,
+        cursor: 'pointer',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.18)'
+      }}
     >
-      <span className="text-center text-white text-xs font-medium leading-tight">
-        {data.label}
-      </span>
       {data.isSECE && (
-        <span className="text-xs bg-cyan-700 text-white px-1.5 py-0.5 rounded font-bold">
-          SECE{data.seceId ? `: ${data.seceId}` : ''}
-        </span>
+        <div
+          style={{
+            position: 'absolute',
+            top: -8,
+            right: -6,
+            background: '#0f172a',
+            color: '#fbbf24',
+            fontSize: 8,
+            fontWeight: 800,
+            padding: '1px 4px',
+            borderRadius: 3,
+            border: '1px solid #fbbf24',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {data.seceId ? `SECE #${data.seceId}` : 'SECE'}
+        </div>
       )}
-      <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
-      <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+      <span>{data.label}</span>
+      <Handle type="target" position={Position.Left} id="left" style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Right} id="right" style={{ opacity: 0 }} />
     </div>
   )
 }

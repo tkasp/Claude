@@ -1,48 +1,54 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
   BackgroundVariant,
+  useReactFlow,
   type NodeTypes
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useProjectStore } from '../store/projectStore'
 import { useBowtieLayout } from '../hooks/useBowtieLayout'
+import { HazardNode } from './nodes/HazardNode'
 import { TopEventNode } from './nodes/TopEventNode'
 import { CauseNode } from './nodes/CauseNode'
 import { ConsequenceNode } from './nodes/ConsequenceNode'
 import { BarrierNode } from './nodes/BarrierNode'
 import { MitigationNode } from './nodes/MitigationNode'
-import { TitleBlock } from './TitleBlock'
+import { registerCapturer } from '../lib/exportRegistry'
+import { captureBowtieDataUrl } from '../lib/exportImage'
+import type { Bowtie, Project } from '../store/types'
 
 const nodeTypes: NodeTypes = {
-  topEvent: TopEventNode as any,
-  cause: CauseNode as any,
-  consequence: ConsequenceNode as any,
-  barrier: BarrierNode as any,
-  mitigation: MitigationNode as any
+  hazard: HazardNode as unknown as NodeTypes[string],
+  topEvent: TopEventNode as unknown as NodeTypes[string],
+  cause: CauseNode as unknown as NodeTypes[string],
+  consequence: ConsequenceNode as unknown as NodeTypes[string],
+  barrier: BarrierNode as unknown as NodeTypes[string],
+  mitigation: MitigationNode as unknown as NodeTypes[string]
 }
 
-export function BowtieCanvas(): React.ReactElement {
-  const project = useProjectStore((s) => s.project)
-  const activeBowtieId = useProjectStore((s) => s.activeBowtieId)
+function CanvasInner({ project, bowtie }: { project: Project; bowtie: Bowtie }): React.ReactElement {
   const setSelectedNode = useProjectStore((s) => s.setSelectedNode)
+  const { nodes, edges } = useBowtieLayout(bowtie)
+  const instance = useReactFlow()
+  const wrapperRef = useRef<HTMLDivElement>(null)
 
-  const activeBowtie = useMemo(
-    () => project.bowties.find((b) => b.id === activeBowtieId),
-    [project, activeBowtieId]
-  )
+  const onPaneClick = useCallback(() => setSelectedNode(null), [setSelectedNode])
 
-  const { nodes, edges } = useBowtieLayout(activeBowtie)
-
-  const onPaneClick = useCallback(() => {
-    setSelectedNode(null)
-  }, [setSelectedNode])
+  useEffect(() => {
+    registerCapturer(async () => {
+      if (!wrapperRef.current) throw new Error('canvas not ready')
+      return captureBowtieDataUrl(instance, wrapperRef.current, project, bowtie)
+    })
+    return () => registerCapturer(null)
+  }, [instance, project, bowtie])
 
   return (
-    <div className="flex-1 relative overflow-hidden" id="bowtie-canvas-export">
+    <div ref={wrapperRef} style={{ flex: 1, minWidth: 0, background: '#ffffff' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -50,20 +56,46 @@ export function BowtieCanvas(): React.ReactElement {
         onPaneClick={onPaneClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.2}
+        maxZoom={2}
         nodesDraggable={false}
         nodesConnectable={false}
-        elementsSelectable={true}
-        deleteKeyCode={null}
+        elementsSelectable
+        zoomOnScroll
+        panOnScroll={false}
+        proOptions={{ hideAttribution: true }}
+        style={{ background: '#ffffff' }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#1f2937" />
-        <Controls className="bg-gray-800 border-gray-600" />
+        <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="#e2e8f0" />
+        <Controls showInteractive={false} />
         <MiniMap
-          className="bg-gray-900 border border-gray-700"
-          nodeColor="#1e3a5f"
-          maskColor="rgba(0,0,0,0.5)"
+          pannable
+          zoomable
+          nodeColor={(n) => {
+            if (n.type === 'topEvent') return '#ea580c'
+            if (n.type === 'cause') return '#1d4ed8'
+            if (n.type === 'consequence') return '#dc2626'
+            if (n.type === 'hazard') return '#fbbf24'
+            return '#94a3b8'
+          }}
+          maskColor="rgba(15,23,42,0.08)"
+          style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}
         />
       </ReactFlow>
-      {/* TitleBlock rendered outside in App.tsx */}
     </div>
+  )
+}
+
+export function BowtieCanvas({
+  project,
+  bowtie
+}: {
+  project: Project
+  bowtie: Bowtie
+}): React.ReactElement {
+  return (
+    <ReactFlowProvider>
+      <CanvasInner project={project} bowtie={bowtie} />
+    </ReactFlowProvider>
   )
 }

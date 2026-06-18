@@ -1,185 +1,169 @@
 import ExcelJS from 'exceljs'
 
 interface Barrier {
-  id: string
   label: string
-  effectiveness: 'Effective' | 'Partially Effective' | 'Ineffective' | ''
+  effectiveness: string
   effectivenessDescription: string
   isSECE: boolean
   seceId: string
 }
-
 interface Cause {
-  id: string
   label: string
   barriers: Barrier[]
 }
-
 interface Consequence {
-  id: string
   label: string
   severity: string
   mitigations: Barrier[]
 }
-
+interface TitleBlock {
+  documentNumber: string
+  documentName: string
+  revBy: string
+  revDate: string
+  revNumber: string
+}
 interface Bowtie {
-  id: string
   name: string
-  topEvent: { id: string; label: string }
+  hazard: { hazardId: string; name: string }
+  topEvent: { label: string }
   causes: Cause[]
   consequences: Consequence[]
-  titleBlock: {
-    documentNumber: string
-    documentName: string
-    revBy: string
-    revDate: string
-    revNumber: string
-  }
+  titleBlock: TitleBlock
 }
-
 interface Project {
-  id: string
   name: string
+  location: string
+  description: string
   bowties: Bowtie[]
 }
 
+const EFFECTIVENESS_FILL: Record<string, string> = {
+  Effective: 'FF16A34A',
+  'Partially Effective': 'FFEAB308',
+  Ineffective: 'FFF97316'
+}
+
+const HEADERS = [
+  'Hazard ID',
+  'Hazard',
+  'Top Event',
+  'Threat / Consequence',
+  'Type',
+  'Barrier / Mitigation',
+  'Effectiveness',
+  'Effectiveness Description',
+  'SECE',
+  'SECE ID',
+  'Severity'
+]
+
+const COL_WIDTHS = [14, 22, 22, 28, 12, 28, 18, 40, 8, 14, 16]
+
 export async function generateExcel(project: Project): Promise<Buffer> {
-  const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'Bowtie Risk Diagram App'
-  workbook.created = new Date()
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'Bowtie Builder'
+  wb.created = new Date()
 
-  const sheet = workbook.addWorksheet('Barriers & Mitigations')
+  const sheet = wb.addWorksheet('Barriers & Mitigations')
+  sheet.columns = COL_WIDTHS.map((w) => ({ width: w }))
 
-  // Header style
-  const headerFill: ExcelJS.Fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FF1E3A5F' }
+  const lastCol = HEADERS.length
+
+  const addProjectHeader = (): void => {
+    const title = sheet.addRow([`Facility: ${project.name}`])
+    title.font = { bold: true, size: 14, color: { argb: 'FF1E3A8A' } }
+    sheet.addRow([`Location: ${project.location || '—'}`]).font = { size: 10 }
+    if (project.description) sheet.addRow([`Description: ${project.description}`]).font = { size: 10 }
+    sheet.addRow([])
   }
-  const headerFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
 
-  sheet.columns = [
-    { header: 'Bowtie', key: 'bowtie', width: 25 },
-    { header: 'Top Event', key: 'topEvent', width: 25 },
-    { header: 'Type', key: 'type', width: 15 },
-    { header: 'Cause / Consequence', key: 'causeConsequence', width: 30 },
-    { header: 'Barrier / Mitigation', key: 'barrier', width: 30 },
-    { header: 'Effectiveness', key: 'effectiveness', width: 20 },
-    { header: 'Effectiveness Description', key: 'effectivenessDescription', width: 40 },
-    { header: 'SECE', key: 'isSECE', width: 10 },
-    { header: 'SECE ID', key: 'seceId', width: 15 },
-    { header: 'Document Number', key: 'docNumber', width: 20 },
-    { header: 'Document Name', key: 'docName', width: 30 },
-    { header: 'Rev By', key: 'revBy', width: 15 },
-    { header: 'Rev Date', key: 'revDate', width: 15 },
-    { header: 'Rev #', key: 'revNumber', width: 10 }
-  ]
-
-  // Style header row
-  const headerRow = sheet.getRow(1)
-  headerRow.eachCell((cell) => {
-    cell.fill = headerFill
-    cell.font = headerFont
-    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
-    cell.border = {
-      top: { style: 'thin', color: { argb: 'FF000000' } },
-      left: { style: 'thin', color: { argb: 'FF000000' } },
-      bottom: { style: 'thin', color: { argb: 'FF000000' } },
-      right: { style: 'thin', color: { argb: 'FF000000' } }
+  const addBowtieReportBlock = (b: Bowtie): void => {
+    // Bowtie title block as a small report header
+    const nameRow = sheet.addRow([`Bowtie: ${b.name}`])
+    nameRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } }
+    nameRow.getCell(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E3A8A' }
     }
-  })
-  headerRow.height = 30
+    sheet.mergeCells(nameRow.number, 1, nameRow.number, lastCol)
 
-  const effectivenessColors: Record<string, string> = {
-    Effective: 'FF22C55E',
-    'Partially Effective': 'FFFBBF24',
-    Ineffective: 'FFEF4444'
-  }
+    const tb = b.titleBlock
+    const tbRow = sheet.addRow([
+      `Doc No.: ${tb.documentNumber || '—'}`,
+      '',
+      `Doc Name: ${tb.documentName || '—'}`,
+      '',
+      `Rev By: ${tb.revBy || '—'}`,
+      '',
+      `Rev Date: ${tb.revDate || '—'}`,
+      '',
+      `Rev #: ${tb.revNumber || '—'}`
+    ])
+    tbRow.font = { size: 10, italic: true, color: { argb: 'FF374151' } }
+    sheet.addRow([])
 
-  for (const bowtie of project.bowties) {
-    // Barriers (from causes)
-    for (const cause of bowtie.causes) {
-      for (const barrier of cause.barriers) {
-        const row = sheet.addRow({
-          bowtie: bowtie.name,
-          topEvent: bowtie.topEvent.label,
-          type: 'Barrier',
-          causeConsequence: cause.label,
-          barrier: barrier.label,
-          effectiveness: barrier.effectiveness,
-          effectivenessDescription: barrier.effectivenessDescription,
-          isSECE: barrier.isSECE ? 'Yes' : 'No',
-          seceId: barrier.seceId,
-          docNumber: bowtie.titleBlock.documentNumber,
-          docName: bowtie.titleBlock.documentName,
-          revBy: bowtie.titleBlock.revBy,
-          revDate: bowtie.titleBlock.revDate,
-          revNumber: bowtie.titleBlock.revNumber
-        })
-        styleDataRow(row, barrier.effectiveness, effectivenessColors)
+    // Column headers
+    const header = sheet.addRow(HEADERS)
+    header.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } }
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
+      cell.border = thinBorder('FF000000')
+    })
+    header.height = 28
+
+    const pushRow = (
+      threatOrCon: string,
+      type: 'Barrier' | 'Mitigation',
+      item: Barrier,
+      severity: string
+    ): void => {
+      const row = sheet.addRow([
+        b.hazard.hazardId,
+        b.hazard.name,
+        b.topEvent.label,
+        threatOrCon,
+        type,
+        item.label,
+        item.effectiveness,
+        item.effectivenessDescription,
+        item.isSECE ? 'Yes' : 'No',
+        item.seceId,
+        severity
+      ])
+      row.eachCell((cell) => {
+        cell.alignment = { vertical: 'middle', wrapText: true }
+        cell.border = thinBorder('FFCBD5E1')
+      })
+      const effFill = EFFECTIVENESS_FILL[item.effectiveness]
+      if (effFill) {
+        const effCell = row.getCell(7)
+        effCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: effFill } }
+        effCell.font = { bold: true }
       }
     }
 
-    // Mitigations (from consequences)
-    for (const consequence of bowtie.consequences) {
-      for (const mitigation of consequence.mitigations) {
-        const row = sheet.addRow({
-          bowtie: bowtie.name,
-          topEvent: bowtie.topEvent.label,
-          type: 'Mitigation',
-          causeConsequence: consequence.label,
-          barrier: mitigation.label,
-          effectiveness: mitigation.effectiveness,
-          effectivenessDescription: mitigation.effectivenessDescription,
-          isSECE: mitigation.isSECE ? 'Yes' : 'No',
-          seceId: mitigation.seceId,
-          docNumber: bowtie.titleBlock.documentNumber,
-          docName: bowtie.titleBlock.documentName,
-          revBy: bowtie.titleBlock.revBy,
-          revDate: bowtie.titleBlock.revDate,
-          revNumber: bowtie.titleBlock.revNumber
-        })
-        styleDataRow(row, mitigation.effectiveness, effectivenessColors)
-      }
+    for (const cause of b.causes) {
+      for (const barrier of cause.barriers) pushRow(cause.label, 'Barrier', barrier, '')
     }
+    for (const con of b.consequences) {
+      for (const mit of con.mitigations) pushRow(con.label, 'Mitigation', mit, con.severity)
+    }
+
+    sheet.addRow([])
+    sheet.addRow([])
   }
 
-  // Auto filter
-  sheet.autoFilter = {
-    from: { row: 1, column: 1 },
-    to: { row: 1, column: 14 }
-  }
+  addProjectHeader()
+  for (const b of project.bowties) addBowtieReportBlock(b)
 
-  // Freeze top row
-  sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }]
-
-  const buffer = await workbook.xlsx.writeBuffer()
+  const buffer = await wb.xlsx.writeBuffer()
   return Buffer.from(buffer)
 }
 
-function styleDataRow(
-  row: ExcelJS.Row,
-  effectiveness: string,
-  colors: Record<string, string>
-): void {
-  row.eachCell((cell) => {
-    cell.alignment = { vertical: 'middle', wrapText: true }
-    cell.border = {
-      top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-      left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-      bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-      right: { style: 'thin', color: { argb: 'FFCCCCCC' } }
-    }
-  })
-  // Color effectiveness cell
-  const effCell = row.getCell('effectiveness')
-  if (effectiveness && colors[effectiveness]) {
-    effCell.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: colors[effectiveness] }
-    }
-    effCell.font = { bold: true, color: { argb: 'FF000000' } }
-  }
-  row.height = 20
+function thinBorder(argb: string): Partial<ExcelJS.Borders> {
+  const side: ExcelJS.Border = { style: 'thin', color: { argb } }
+  return { top: side, left: side, bottom: side, right: side }
 }
