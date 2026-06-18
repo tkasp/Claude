@@ -7,6 +7,7 @@ import {
   MiniMap,
   BackgroundVariant,
   useReactFlow,
+  type Node,
   type NodeTypes
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -31,13 +32,32 @@ const nodeTypes: NodeTypes = {
   mitigation: MitigationNode as unknown as NodeTypes[string]
 }
 
+// Cause/consequence rows store a manual centre-Y; node top-left is centre - half height.
+const NODE_HALF_HEIGHT = 30
+
 function CanvasInner({ project, bowtie }: { project: Project; bowtie: Bowtie }): React.ReactElement {
   const setSelectedNode = useProjectStore((s) => s.setSelectedNode)
+  const setCauseManualY = useProjectStore((s) => s.setCauseManualY)
+  const setConsequenceManualY = useProjectStore((s) => s.setConsequenceManualY)
   const { nodes, edges } = useBowtieLayout(bowtie)
   const instance = useReactFlow()
   const wrapperRef = useRef<HTMLDivElement>(null)
 
   const onPaneClick = useCallback(() => setSelectedNode(null), [setSelectedNode])
+
+  // Only threat (cause) and consequence rows are draggable, vertically. Persist
+  // the new centre-Y so the whole row (and its barriers/mitigations) reflows.
+  const onNodeDragStop = useCallback(
+    (_e: React.MouseEvent, node: Node) => {
+      const centreY = node.position.y + NODE_HALF_HEIGHT
+      if (node.type === 'cause') {
+        setCauseManualY(project.id, bowtie.id, node.data.causeId as string, centreY)
+      } else if (node.type === 'consequence') {
+        setConsequenceManualY(project.id, bowtie.id, node.data.consequenceId as string, centreY)
+      }
+    },
+    [project.id, bowtie.id, setCauseManualY, setConsequenceManualY]
+  )
 
   useEffect(() => {
     registerCapturer(async () => {
@@ -48,23 +68,24 @@ function CanvasInner({ project, bowtie }: { project: Project; bowtie: Bowtie }):
   }, [instance, project, bowtie])
 
   return (
-    <div ref={wrapperRef} style={{ flex: 1, minWidth: 0, background: '#ffffff' }}>
+    <div ref={wrapperRef} style={{ flex: 1, minWidth: 0, background: '#f4f5f7' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         onPaneClick={onPaneClick}
+        onNodeDragStop={onNodeDragStop}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.2}
         maxZoom={2}
-        nodesDraggable={false}
+        nodesDraggable
         nodesConnectable={false}
         elementsSelectable
         zoomOnScroll
         panOnScroll={false}
         proOptions={{ hideAttribution: true }}
-        style={{ background: '#ffffff' }}
+        style={{ background: '#f4f5f7' }}
       >
         <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="#e2e8f0" />
         <Controls showInteractive={false} />

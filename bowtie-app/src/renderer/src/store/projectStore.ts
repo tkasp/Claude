@@ -111,6 +111,7 @@ interface WorkspaceState {
   // Causes / barriers
   addCause: (projectId: string, bowtieId: string) => void
   updateCause: (projectId: string, bowtieId: string, causeId: string, label: string) => void
+  setCauseManualY: (projectId: string, bowtieId: string, causeId: string, y: number) => void
   deleteCause: (projectId: string, bowtieId: string, causeId: string) => void
   addBarrier: (projectId: string, bowtieId: string, causeId: string) => void
   updateBarrier: (
@@ -130,6 +131,7 @@ interface WorkspaceState {
     consequenceId: string,
     updates: Partial<Consequence>
   ) => void
+  setConsequenceManualY: (projectId: string, bowtieId: string, consequenceId: string, y: number) => void
   deleteConsequence: (projectId: string, bowtieId: string, consequenceId: string) => void
   addMitigation: (projectId: string, bowtieId: string, consequenceId: string) => void
   updateMitigation: (
@@ -368,6 +370,13 @@ export const useProjectStore = create<WorkspaceState>()(
           if (c) c.label = label
         }),
 
+      setCauseManualY: (projectId, bowtieId, causeId, y) =>
+        set((s) => {
+          const bt = findBowtie(s, projectId, bowtieId)
+          const c = bt?.causes.find((c) => c.id === causeId)
+          if (c) c.manualY = y
+        }),
+
       deleteCause: (projectId, bowtieId, causeId) =>
         set((s) => {
           const bt = findBowtie(s, projectId, bowtieId)
@@ -417,6 +426,13 @@ export const useProjectStore = create<WorkspaceState>()(
           const bt = findBowtie(s, projectId, bowtieId)
           const con = bt?.consequences.find((c) => c.id === consequenceId)
           if (con) Object.assign(con, updates)
+        }),
+
+      setConsequenceManualY: (projectId, bowtieId, consequenceId, y) =>
+        set((s) => {
+          const bt = findBowtie(s, projectId, bowtieId)
+          const c = bt?.consequences.find((c) => c.id === consequenceId)
+          if (c) c.manualY = y
         }),
 
       deleteConsequence: (projectId, bowtieId, consequenceId) =>

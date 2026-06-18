@@ -3,8 +3,8 @@ import { useProjectStore } from '../store/projectStore'
 import type { TitleBlock } from '../store/types'
 
 const inputCls =
-  'w-full bg-white border border-gray-300 rounded px-2.5 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-blue-500'
-const lblCls = 'text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1 mt-3'
+  'w-full bg-slate-700 border border-slate-600 rounded px-2.5 py-1.5 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-400'
+const lblCls = 'text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1 mt-3'
 
 const TB_FIELDS: { key: keyof TitleBlock; label: string }[] = [
   { key: 'documentNumber', label: 'Document Number' },
@@ -20,10 +20,10 @@ export function ProjectSettingsView({ projectId }: { projectId: string }): React
   if (!project) return <div className="flex-1 bg-white" />
 
   return (
-    <div className="flex-1 bg-white overflow-y-auto p-8">
+    <div className="flex-1 bg-slate-800 overflow-y-auto p-8">
       <div className="max-w-xl">
-        <h2 className="text-xl font-bold text-gray-800">Project Settings</h2>
-        <p className="text-xs text-gray-500 mt-1">Facility-level details and default title block.</p>
+        <h2 className="text-xl font-bold text-white">Project Settings</h2>
+        <p className="text-xs text-slate-400 mt-1">Facility-level details and default title block.</p>
 
         <div className={lblCls}>Facility / Project Name</div>
         <input
@@ -47,10 +47,10 @@ export function ProjectSettingsView({ projectId }: { projectId: string }): React
           onChange={(e) => store.updateProjectMeta(projectId, { description: e.target.value })}
         />
 
-        <div className="mt-6 mb-1 text-xs font-bold uppercase tracking-wider text-gray-600 border-t border-gray-200 pt-4">
+        <div className="mt-6 mb-1 text-xs font-bold uppercase tracking-wider text-slate-300 border-t border-slate-600 pt-4">
           Default Title Block
         </div>
-        <p className="text-xs text-gray-400 mb-2">
+        <p className="text-xs text-slate-400 mb-2">
           Used as the starting title block for new bowties in this project.
         </p>
         {TB_FIELDS.map((f) => (
@@ -77,13 +77,13 @@ export function BowtieSettingsView({
 }): React.ReactElement {
   const store = useProjectStore()
   const bowtie = store.getBowtie(projectId, bowtieId)
-  if (!bowtie) return <div className="flex-1 bg-white" />
+  if (!bowtie) return <div className="flex-1 bg-slate-800" />
 
   return (
-    <div className="flex-1 bg-white overflow-y-auto p-8">
+    <div className="flex-1 bg-slate-800 overflow-y-auto p-8">
       <div className="max-w-xl">
-        <h2 className="text-xl font-bold text-gray-800">Bowtie Settings</h2>
-        <p className="text-xs text-gray-500 mt-1">Title block for “{bowtie.name}”.</p>
+        <h2 className="text-xl font-bold text-white">Bowtie Settings</h2>
+        <p className="text-xs text-slate-400 mt-1">Title block for “{bowtie.name}”.</p>
 
         <div className={lblCls}>Bowtie Name</div>
         <input
@@ -92,7 +92,7 @@ export function BowtieSettingsView({
           onChange={(e) => store.renameBowtie(projectId, bowtieId, e.target.value)}
         />
 
-        <div className="mt-6 mb-1 text-xs font-bold uppercase tracking-wider text-gray-600 border-t border-gray-200 pt-4">
+        <div className="mt-6 mb-1 text-xs font-bold uppercase tracking-wider text-slate-300 border-t border-slate-600 pt-4">
           Title Block
         </div>
         {TB_FIELDS.map((f) => (

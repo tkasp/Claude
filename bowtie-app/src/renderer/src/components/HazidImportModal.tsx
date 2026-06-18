@@ -24,7 +24,6 @@ export function HazidImportModal({ projectId, attachment, onClose }: Props): Rea
 
   // Column text filters
   const [filterHazardId, setFilterHazardId] = useState('')
-  const [filterNode, setFilterNode] = useState('')
   const [filterHazard, setFilterHazard] = useState('')
   const [filterTopEvent, setFilterTopEvent] = useState('')
   const [filterRisk, setFilterRisk] = useState('')
@@ -59,21 +58,19 @@ export function HazidImportModal({ projectId, attachment, onClose }: Props): Rea
     if (!parsed) return []
     return parsed.rows.filter((row) => {
       const hazardId = getCell(row, 'hazardId')
-      const node = getCell(row, 'node')
       const hazard = getCell(row, 'hazard')
       const topEvent = getCell(row, 'topEvent')
       const risk = getCell(row, 'riskRating')
 
       if (highSevOnly && !isHighSeverity(risk)) return false
       if (filterHazardId && !hazardId.toLowerCase().includes(filterHazardId.toLowerCase())) return false
-      if (filterNode && !node.toLowerCase().includes(filterNode.toLowerCase())) return false
       if (filterHazard && !hazard.toLowerCase().includes(filterHazard.toLowerCase())) return false
       if (filterTopEvent && !topEvent.toLowerCase().includes(filterTopEvent.toLowerCase())) return false
       if (filterRisk && !risk.toLowerCase().includes(filterRisk.toLowerCase())) return false
       return true
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parsed, filterHazardId, filterNode, filterHazard, filterTopEvent, filterRisk, highSevOnly])
+  }, [parsed, filterHazardId, filterHazard, filterTopEvent, filterRisk, highSevOnly])
 
   const toggleRow = (rowIndex: number): void => {
     setSelected((prev) => {
@@ -121,12 +118,10 @@ export function HazidImportModal({ projectId, attachment, onClose }: Props): Rea
       const hazardId = getCell(row, 'hazardId')
       const hazardName = getCell(row, 'hazard')
       const topEvent = getCell(row, 'topEvent')
-      const node = getCell(row, 'node')
       const name = hazardId
         ? `${hazardId} – ${hazardName || topEvent || 'Bowtie'}`
         : hazardName || `Bowtie ${i + 1}`
-      const fullHazardName = node ? `${node}: ${hazardName}` : hazardName
-      return { name, hazardId, hazardName: fullHazardName, topEvent }
+      return { name, hazardId, hazardName, topEvent }
     })
     store.batchAddBowties(projectId, stubs)
     onClose()
@@ -197,11 +192,10 @@ export function HazidImportModal({ projectId, attachment, onClose }: Props): Rea
                   >
                     Severity 4 & 5 Only
                   </button>
-                  {(filterHazardId || filterNode || filterHazard || filterTopEvent || filterRisk) && (
+                  {(filterHazardId || filterHazard || filterTopEvent || filterRisk) && (
                     <button
                       onClick={() => {
                         setFilterHazardId('')
-                        setFilterNode('')
                         setFilterHazard('')
                         setFilterTopEvent('')
                         setFilterRisk('')
@@ -215,12 +209,11 @@ export function HazidImportModal({ projectId, attachment, onClose }: Props): Rea
                     Showing {filteredRows.length} / {parsed.rows.length} rows
                   </span>
                 </div>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   <FilterInput value={filterHazardId} onChange={setFilterHazardId} placeholder="Hazard ID…" />
-                  <FilterInput value={filterNode} onChange={setFilterNode} placeholder="Node / Area…" />
                   <FilterInput value={filterHazard} onChange={setFilterHazard} placeholder="Hazard…" />
                   <FilterInput value={filterTopEvent} onChange={setFilterTopEvent} placeholder="Top Event…" />
-                  <FilterInput value={filterRisk} onChange={setFilterRisk} placeholder="Risk Rating…" />
+                  <FilterInput value={filterRisk} onChange={setFilterRisk} placeholder="Consequence Rating…" />
                 </div>
               </div>
 
@@ -240,16 +233,13 @@ export function HazidImportModal({ projectId, attachment, onClose }: Props): Rea
                         Hazard ID
                       </th>
                       <th className="px-3 py-2 text-left border-b border-slate-600 text-slate-300 font-semibold whitespace-nowrap">
-                        Node / Area
-                      </th>
-                      <th className="px-3 py-2 text-left border-b border-slate-600 text-slate-300 font-semibold whitespace-nowrap">
                         Hazard
                       </th>
                       <th className="px-3 py-2 text-left border-b border-slate-600 text-slate-300 font-semibold whitespace-nowrap">
                         Top Event / Deviation
                       </th>
                       <th className="px-3 py-2 text-left border-b border-slate-600 text-slate-300 font-semibold whitespace-nowrap">
-                        Risk Rating
+                        Consequence Rating
                       </th>
                     </tr>
                   </thead>
@@ -278,10 +268,7 @@ export function HazidImportModal({ projectId, attachment, onClose }: Props): Rea
                           <td className="px-3 py-1.5 font-mono text-slate-300 whitespace-nowrap">
                             {getCell(row, 'hazardId') || '—'}
                           </td>
-                          <td className="px-3 py-1.5 text-slate-400 max-w-[120px] truncate">
-                            {getCell(row, 'node') || '—'}
-                          </td>
-                          <td className="px-3 py-1.5 text-slate-200 max-w-[180px]">
+                          <td className="px-3 py-1.5 text-slate-200 max-w-[220px]">
                             {getCell(row, 'hazard') || '—'}
                           </td>
                           <td className="px-3 py-1.5 text-slate-200 max-w-[200px]">
@@ -299,7 +286,7 @@ export function HazidImportModal({ projectId, attachment, onClose }: Props): Rea
                     })}
                     {filteredRows.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-5 py-8 text-center text-slate-500">
+                        <td colSpan={5} className="px-5 py-8 text-center text-slate-500">
                           No rows match the current filters.
                         </td>
                       </tr>

@@ -17,7 +17,7 @@ body {
 
 .react-flow__renderer,
 .react-flow__background {
-  background: #ffffff !important;
+  background: #f4f5f7 !important;
 }
 
 .react-flow__edge-path {

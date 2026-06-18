@@ -34,6 +34,9 @@ export interface Cause {
   id: string
   label: string
   barriers: Barrier[]
+  // Manual vertical position (row centre Y, canvas coords) when the user has
+  // dragged the threat line; undefined means auto-layout.
+  manualY?: number
 }
 
 export interface Consequence {
@@ -41,6 +44,9 @@ export interface Consequence {
   label: string
   severity: 'Catastrophic' | 'Major' | 'Moderate' | 'Minor' | 'Negligible' | ''
   mitigations: Mitigation[]
+  // Manual vertical position (row centre Y, canvas coords) when the user has
+  // dragged the consequence line; undefined means auto-layout.
+  manualY?: number
 }
 
 export interface Bowtie {

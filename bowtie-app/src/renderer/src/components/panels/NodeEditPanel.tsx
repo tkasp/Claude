@@ -13,17 +13,17 @@ const EFF_COLORS: Record<string, string> = {
   Ineffective: '#f97316'
 }
 
-const labelCls = 'text-[11px] font-semibold uppercase tracking-wide text-gray-500 mt-3 mb-1'
+const labelCls = 'text-[11px] font-semibold uppercase tracking-wide text-slate-400 mt-3 mb-1'
 const inputCls =
-  'w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-blue-500'
+  'w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-400'
 
 // Defined at module scope so its identity is stable across renders. When this
 // lived inside NodeEditPanel, every keystroke created a new component type,
 // remounting the subtree and stealing focus from the input after one character.
 function Wrap({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
-    <div className="w-72 shrink-0 bg-gray-50 border-l border-gray-200 p-4 overflow-y-auto">
-      <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+    <div className="w-72 shrink-0 bg-slate-800 border-l border-slate-700 p-4 overflow-y-auto">
+      <h3 className="text-sm font-bold text-white">{title}</h3>
       {children}
     </div>
   )
@@ -38,14 +38,14 @@ export function NodeEditPanel(): React.ReactElement {
 
   if (!selectedNode || !projectId) {
     return (
-      <div className="w-72 shrink-0 bg-gray-50 border-l border-gray-200 p-4 text-gray-400 text-sm flex items-center justify-center text-center">
+      <div className="w-72 shrink-0 bg-slate-800 border-l border-slate-700 p-4 text-slate-400 text-sm flex items-center justify-center text-center">
         Select an item on the diagram to edit its properties.
       </div>
     )
   }
 
   const bowtie = store.getBowtie(projectId, selectedNode.bowtieId)
-  if (!bowtie) return <div className="w-72 shrink-0 bg-gray-50 border-l border-gray-200" />
+  if (!bowtie) return <div className="w-72 shrink-0 bg-slate-800 border-l border-slate-700" />
 
   if (selectedNode.kind === 'hazard') {
     return (
@@ -225,8 +225,8 @@ function BarrierForm({
   onDelete: () => void
 }): React.ReactElement {
   return (
-    <div className="w-72 shrink-0 bg-gray-50 border-l border-gray-200 p-4 overflow-y-auto">
-      <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+    <div className="w-72 shrink-0 bg-slate-800 border-l border-slate-700 p-4 overflow-y-auto">
+      <h3 className="text-sm font-bold text-white">{title}</h3>
 
       <div className={labelCls}>Label</div>
       <input className={inputCls} value={item.label} onChange={(e) => onUpdate({ label: e.target.value })} />
@@ -234,7 +234,7 @@ function BarrierForm({
       <div className={labelCls}>Effectiveness</div>
       <div className="flex flex-col gap-1.5">
         {EFFECTIVENESS_OPTIONS.map((opt) => (
-          <label key={opt} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <label key={opt} className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer">
             <span
               onClick={() => onUpdate({ effectiveness: opt })}
               className="w-3.5 h-3.5 rounded-full shrink-0 cursor-pointer"
@@ -258,7 +258,7 @@ function BarrierForm({
       />
 
       <div className={labelCls}>SECE</div>
-      <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+      <label className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer">
         <input
           type="checkbox"
           checked={item.isSECE}
@@ -273,7 +273,7 @@ function BarrierForm({
         value={item.seceId}
         disabled={!item.isSECE}
         placeholder={item.isSECE ? 'e.g. SE-04' : ''}
-        style={{ background: item.isSECE ? 'white' : '#f1f5f9', color: item.isSECE ? '#111827' : '#94a3b8' }}
+        style={{ opacity: item.isSECE ? 1 : 0.5 }}
         onChange={(e) => onUpdate({ seceId: e.target.value })}
       />
 

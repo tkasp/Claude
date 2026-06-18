@@ -68,7 +68,7 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
     const causeStartY = TOP_EVENT_CY - causeSpan / 2
 
     bowtie.causes.forEach((cause, ci) => {
-      const rowY = causeStartY + ci * V_SPACING
+      const rowY = cause.manualY ?? causeStartY + ci * V_SPACING
       nodes.push({
         id: cause.id,
         type: 'cause',
@@ -76,7 +76,7 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
         data: { bowtieId: bowtie.id, causeId: cause.id, label: cause.label },
         width: NODE_WIDTH,
         height: NODE_HEIGHT,
-        draggable: false
+        draggable: true
       })
 
       let prevId = cause.id
@@ -129,7 +129,7 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
     const conStartY = TOP_EVENT_CY - conSpan / 2
 
     bowtie.consequences.forEach((con, ci) => {
-      const rowY = conStartY + ci * V_SPACING
+      const rowY = con.manualY ?? conStartY + ci * V_SPACING
       nodes.push({
         id: con.id,
         type: 'consequence',
@@ -142,7 +142,7 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
         },
         width: NODE_WIDTH,
         height: NODE_HEIGHT + 22,  // includes severity badge
-        draggable: false
+        draggable: true
       })
 
       let prevId = bowtie.topEvent.id

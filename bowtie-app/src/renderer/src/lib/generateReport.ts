@@ -5,25 +5,66 @@ import { jsPDF } from 'jspdf'
 import type { Project, Bowtie } from '../store/types'
 import { severityLabel } from './severity'
 
-const BLUE = [29, 78, 216] as [number, number, number]
-const RED = [185, 28, 28] as [number, number, number]
-const ORANGE = [249, 115, 22] as [number, number, number]
-const SLATE = [30, 41, 59] as [number, number, number]
-const LIGHT = [248, 250, 252] as [number, number, number]
+const BLUE: [number, number, number] = [37, 99, 235]
+const RED: [number, number, number] = [220, 38, 38]
+const AMBER: [number, number, number] = [245, 158, 11]
+const SLATE: [number, number, number] = [15, 23, 42]
+const VIOLET: [number, number, number] = [124, 58, 237]
+const LIGHT: [number, number, number] = [244, 245, 247]
 
-// Draws the report page header strip (blue bar + title)
-function addPageHeader(doc: jsPDF, title: string, subtitle = ''): void {
-  const W = doc.internal.pageSize.getWidth()
+// Reads a PNG data-URL's intrinsic pixel size for aspect-ratio fitting.
+function imageSize(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve({ w: img.width, h: img.height })
+    img.onerror = reject
+    img.src = dataUrl
+  })
+}
+
+// Draws the Swiss-Cheese vector logo at (x, y) with the given box size (mm).
+function drawLogo(doc: jsPDF, x: number, y: number, s: number): void {
+  const p = (v: number): number => v / 48 * s // map 48-unit viewBox to s mm
+  // Left lobe
+  doc.setFillColor(...BLUE)
+  doc.triangle(x + p(7), y + p(11), x + p(23), y + p(24), x + p(7), y + p(37), 'F')
+  // Right lobe
+  doc.setFillColor(...RED)
+  doc.triangle(x + p(41), y + p(11), x + p(25), y + p(24), x + p(41), y + p(37), 'F')
+  // Holes
+  doc.setFillColor(...LIGHT)
+  doc.circle(x + p(11.5), y + p(19), p(1.9), 'F')
+  doc.circle(x + p(11), y + p(29), p(1.5), 'F')
+  doc.circle(x + p(36.5), y + p(19), p(1.9), 'F')
+  doc.circle(x + p(37), y + p(29), p(1.5), 'F')
+  // Centre event
   doc.setFillColor(...SLATE)
-  doc.rect(0, 0, W, 14, 'F')
+  doc.circle(x + p(24), y + p(24), p(5), 'F')
+  doc.setFillColor(...AMBER)
+  doc.circle(x + p(24), y + p(24), p(2.4), 'F')
+}
+
+function pageW(doc: jsPDF): number {
+  return doc.internal.pageSize.getWidth()
+}
+function pageH(doc: jsPDF): number {
+  return doc.internal.pageSize.getHeight()
+}
+
+function addPageHeader(doc: jsPDF, title: string, subtitle = ''): void {
+  const W = pageW(doc)
+  doc.setFillColor(...SLATE)
+  doc.rect(0, 0, W, 16, 'F')
+  drawLogo(doc, 6, 2.5, 11)
   doc.setTextColor(255, 255, 255)
-  doc.setFontSize(9)
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
-  doc.text('Swiss-Cheese', 8, 9)
+  doc.text('Swiss-Cheese', 20, 8)
   doc.setFont('helvetica', 'normal')
-  doc.text(title, W / 2, 9, { align: 'center' })
+  doc.setFontSize(10)
+  doc.text(title, W / 2, 8, { align: 'center' })
   if (subtitle) {
-    doc.setFontSize(7.5)
+    doc.setFontSize(8)
     doc.setTextColor(148, 163, 184)
     doc.text(subtitle, W / 2, 13, { align: 'center' })
   }
@@ -31,287 +72,202 @@ function addPageHeader(doc: jsPDF, title: string, subtitle = ''): void {
 }
 
 function addFooter(doc: jsPDF, pageNum: number, totalPages: number): void {
-  const W = doc.internal.pageSize.getWidth()
-  const H = doc.internal.pageSize.getHeight()
+  const W = pageW(doc)
+  const H = pageH(doc)
   doc.setDrawColor(203, 213, 225)
-  doc.line(8, H - 8, W - 8, H - 8)
-  doc.setFontSize(7)
+  doc.line(10, H - 10, W - 10, H - 10)
+  doc.setFontSize(8)
   doc.setTextColor(148, 163, 184)
-  doc.text(`Page ${pageNum} of ${totalPages}`, W / 2, H - 4, { align: 'center' })
-  doc.text(`Generated ${new Date().toLocaleDateString()}`, W - 8, H - 4, { align: 'right' })
+  doc.text(`Page ${pageNum} of ${totalPages}`, W / 2, H - 5, { align: 'center' })
+  doc.text(`Generated ${new Date().toLocaleDateString()}`, W - 10, H - 5, { align: 'right' })
 }
 
-// Cover page
 function addCoverPage(doc: jsPDF, project: Project): void {
-  const W = doc.internal.pageSize.getWidth()
-  const H = doc.internal.pageSize.getHeight()
+  const W = pageW(doc)
+  const H = pageH(doc)
 
-  // Background header block
   doc.setFillColor(...SLATE)
-  doc.rect(0, 0, W, 60, 'F')
+  doc.rect(0, 0, W, 90, 'F')
 
-  // App name
-  doc.setFontSize(10)
+  // Logo, centred
+  drawLogo(doc, W / 2 - 16, 18, 32)
+
+  doc.setFontSize(13)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(148, 163, 184)
-  doc.text('SWISS-CHEESE', W / 2, 20, { align: 'center' })
+  doc.text('SWISS-CHEESE', W / 2, 62, { align: 'center' })
 
-  // Project name
-  doc.setFontSize(22)
+  doc.setFontSize(28)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(255, 255, 255)
-  doc.text(project.name, W / 2, 36, { align: 'center', maxWidth: W - 20 })
+  doc.text(project.name, W / 2, 76, { align: 'center', maxWidth: W - 30 })
 
-  // Subtitle
-  doc.setFontSize(10)
+  doc.setFontSize(11)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(148, 163, 184)
-  doc.text('Bowtie Risk Analysis Report', W / 2, 48, { align: 'center' })
+  doc.text('Bowtie Risk Analysis Report', W / 2, 85, { align: 'center' })
 
-  // Details table
-  let y = 72
+  // Details
+  let y = 108
   const kv = (label: string, value: string): void => {
-    doc.setFontSize(9)
+    doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...SLATE)
-    doc.text(label, 14, y)
+    doc.text(label, 18, y)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(30, 30, 30)
-    doc.text(value || '—', 60, y)
-    y += 8
+    doc.text(value || '—', 70, y, { maxWidth: W - 90 })
+    y += 9
   }
-
   kv('Facility:', project.name)
   kv('Location:', project.location)
   kv('Description:', project.description)
   kv('Bowties:', String(project.bowties.length))
   kv('Date:', new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' }))
 
-  // Title block box
-  if (project.titleBlock) {
-    y += 6
-    doc.setFillColor(...LIGHT)
-    doc.setDrawColor(203, 213, 225)
-    doc.roundedRect(12, y, W - 24, 38, 2, 2, 'FD')
-    y += 8
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...SLATE)
-    doc.text('DEFAULT TITLE BLOCK', 18, y)
-    y += 7
-    const tb = project.titleBlock
-    const tbRows = [
-      ['Document Number', tb.documentNumber],
-      ['Document Name', tb.documentName],
-      ['Rev By', tb.revBy],
-      ['Rev Date', tb.revDate],
-      ['Rev #', tb.revNumber]
-    ]
-    const colW = (W - 28) / 2
-    let col = 0
-    let rowY = y
-    for (const [lbl, val] of tbRows) {
-      const x = 18 + col * (colW + 4)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(7.5)
-      doc.setTextColor(100, 116, 139)
-      doc.text(lbl.toUpperCase(), x, rowY)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(15, 23, 42)
-      doc.text(val || '—', x, rowY + 5)
-      col++
-      if (col === 2) {
-        col = 0
-        rowY += 13
-      }
-    }
-  }
-
-  // Orange bowtie accent bar at bottom
-  doc.setFillColor(...ORANGE)
-  doc.rect(0, H - 6, W, 6, 'F')
-}
-
-// One bowtie details page (text properties — PNG is on separate page)
-function addBowtiePropertiesPage(doc: jsPDF, project: Project, bowtie: Bowtie): void {
-  doc.addPage('a4', 'portrait')
-  addPageHeader(doc, `Bowtie: ${bowtie.name}`, project.name)
-
-  let y = 22
-
-  // Hazard info
-  doc.setFillColor(...BLUE)
-  doc.rect(8, y, doc.internal.pageSize.getWidth() - 16, 8, 'F')
-  doc.setFontSize(8.5)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(255, 255, 255)
-  doc.text(`Hazard: ${bowtie.hazard.hazardId}  —  ${bowtie.hazard.name}`, 12, y + 5.5)
-  y += 12
-
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(...SLATE)
-  doc.text(`Top Event: `, 10, y)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(30, 30, 30)
-  doc.text(bowtie.topEvent.label, 36, y)
-  y += 10
-
-  // Title block
-  const tb = bowtie.titleBlock
+  // Default title block
+  y += 6
+  const tb = project.titleBlock
   autoTable(doc, {
     startY: y,
-    head: [['Doc Number', 'Doc Name', 'Rev By', 'Rev Date', 'Rev #']],
+    head: [['Document Number', 'Document Name', 'Rev By', 'Rev Date', 'Rev #']],
     body: [[tb.documentNumber || '—', tb.documentName || '—', tb.revBy || '—', tb.revDate || '—', tb.revNumber || '—']],
     theme: 'grid',
+    headStyles: { fillColor: SLATE, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 9 },
+    margin: { left: 18, right: 18 }
+  })
+
+  doc.setFillColor(...AMBER)
+  doc.rect(0, H - 8, W, 8, 'F')
+}
+
+// Landscape full-page bowtie diagram, aspect-ratio preserved + properties strip.
+async function addBowtiePngPage(doc: jsPDF, project: Project, bowtie: Bowtie, dataUrl: string): Promise<void> {
+  doc.addPage('tabloid', 'landscape')
+  const W = pageW(doc)
+  const H = pageH(doc)
+  addPageHeader(doc, `Bowtie: ${bowtie.name}`, project.name)
+
+  // Properties strip under the header
+  let stripY = 20
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...BLUE)
+  doc.text(`Hazard ${bowtie.hazard.hazardId}`, 10, stripY + 4)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(40, 40, 40)
+  doc.text(bowtie.hazard.name || '—', 45, stripY + 4)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...SLATE)
+  doc.text('Top Event:', W / 2 - 40, stripY + 4)
+  doc.setFont('helvetica', 'normal')
+  doc.text(bowtie.topEvent.label || '—', W / 2 - 18, stripY + 4, { maxWidth: W / 2 })
+  stripY += 8
+
+  // Image area
+  const imgTop = stripY
+  const maxW = W - 20
+  const maxH = H - imgTop - 14
+  let drawW = maxW
+  let drawH = maxH
+  try {
+    const { w, h } = await imageSize(dataUrl)
+    const ar = w / h
+    drawW = maxW
+    drawH = maxW / ar
+    if (drawH > maxH) {
+      drawH = maxH
+      drawW = maxH * ar
+    }
+  } catch {
+    /* fall back to box dims */
+  }
+  const imgX = (W - drawW) / 2
+  doc.addImage(dataUrl, 'PNG', imgX, imgTop, drawW, drawH, undefined, 'FAST')
+}
+
+// Combined barriers & mitigations table across all bowties (portrait).
+function addControlsPage(doc: jsPDF, project: Project): void {
+  doc.addPage('tabloid', 'portrait')
+  addPageHeader(doc, 'Barriers & Mitigations', project.name)
+
+  const rows: Array<[string, string, string, string, string, string, string, string]> = []
+  for (const bt of project.bowties) {
+    for (const cause of bt.causes) {
+      for (const b of cause.barriers) {
+        rows.push([
+          bt.name,
+          'Barrier',
+          cause.label,
+          b.label,
+          b.effectiveness || '—',
+          b.isSECE ? (b.seceId ? `SECE #${b.seceId}` : 'SECE') : '—',
+          '—',
+          b.effectivenessDescription || '—'
+        ])
+      }
+    }
+    for (const con of bt.consequences) {
+      for (const m of con.mitigations) {
+        rows.push([
+          bt.name,
+          'Mitigation',
+          con.label,
+          m.label,
+          m.effectiveness || '—',
+          m.isSECE ? (m.seceId ? `SECE #${m.seceId}` : 'SECE') : '—',
+          severityLabel(con.severity) || '—',
+          m.effectivenessDescription || '—'
+        ])
+      }
+    }
+  }
+
+  autoTable(doc, {
+    startY: 20,
+    head: [['Bowtie', 'Type', 'Threat / Consequence', 'Barrier / Mitigation', 'Effectiveness', 'SECE', 'Severity', 'Effectiveness Basis']],
+    body: rows.length > 0 ? rows : [['—', '—', '—', '—', '—', '—', '—', 'No barriers or mitigations recorded']],
+    theme: 'striped',
     headStyles: { fillColor: SLATE, textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
     bodyStyles: { fontSize: 8 },
-    margin: { left: 8, right: 8 },
-    tableWidth: 'auto'
+    columnStyles: { 7: { cellWidth: 55 } },
+    margin: { left: 10, right: 10 }
   })
-  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
-
-  // Causes / barriers
-  if (bowtie.causes.length > 0) {
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...BLUE)
-    doc.text('THREATS & BARRIERS', 10, y)
-    y += 4
-
-    const barrierRows: string[][] = []
-    for (const c of bowtie.causes) {
-      if (c.barriers.length === 0) {
-        barrierRows.push([c.label, '—', '—', '—', '—', '—'])
-      } else {
-        for (const b of c.barriers) {
-          barrierRows.push([
-            c.label,
-            b.label,
-            b.effectiveness || '—',
-            b.isSECE ? (b.seceId ? `SECE #${b.seceId}` : 'SECE') : '—',
-            String(b.actions?.length ?? 0),
-            b.effectivenessDescription || '—'
-          ])
-        }
-      }
-    }
-
-    autoTable(doc, {
-      startY: y,
-      head: [['Threat', 'Barrier', 'Effectiveness', 'SECE', 'Actions', 'Effectiveness Basis']],
-      body: barrierRows,
-      theme: 'striped',
-      headStyles: { fillColor: BLUE, textColor: [255, 255, 255], fontSize: 7.5, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 7.5 },
-      columnStyles: { 5: { cellWidth: 50 } },
-      margin: { left: 8, right: 8 }
-    })
-    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
-  }
-
-  // Consequences / mitigations
-  if (bowtie.consequences.length > 0) {
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...RED)
-    doc.text('CONSEQUENCES & MITIGATIONS', 10, y)
-    y += 4
-
-    const mitRows: string[][] = []
-    for (const c of bowtie.consequences) {
-      if (c.mitigations.length === 0) {
-        mitRows.push([c.label, severityLabel(c.severity) || '—', '—', '—', '—', '—', '—'])
-      } else {
-        for (const m of c.mitigations) {
-          mitRows.push([
-            c.label,
-            severityLabel(c.severity) || '—',
-            m.label,
-            m.effectiveness || '—',
-            m.isSECE ? (m.seceId ? `SECE #${m.seceId}` : 'SECE') : '—',
-            String(m.actions?.length ?? 0),
-            m.effectivenessDescription || '—'
-          ])
-        }
-      }
-    }
-
-    autoTable(doc, {
-      startY: y,
-      head: [['Consequence', 'Severity', 'Mitigation', 'Effectiveness', 'SECE', 'Actions', 'Effectiveness Basis']],
-      body: mitRows,
-      theme: 'striped',
-      headStyles: { fillColor: RED, textColor: [255, 255, 255], fontSize: 7.5, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 7.5 },
-      columnStyles: { 6: { cellWidth: 44 } },
-      margin: { left: 8, right: 8 }
-    })
-  }
 }
 
-// Full-page bowtie PNG (landscape)
-function addBowtiePngPage(doc: jsPDF, dataUrl: string, bowtie: Bowtie): void {
-  doc.addPage([297, 210], 'landscape')
-  const W = doc.internal.pageSize.getWidth()
-  const H = doc.internal.pageSize.getHeight()
-  addPageHeader(doc, `Bowtie Diagram: ${bowtie.name}`)
-
-  const imgY = 16
-  const imgH = H - imgY - 10
-  const imgW = W - 16
-
-  doc.addImage(dataUrl, 'PNG', 8, imgY, imgW, imgH, undefined, 'FAST')
-}
-
-// Actions summary page
+// Combined actions register across all bowties (portrait).
 function addActionsPage(doc: jsPDF, project: Project): void {
-  doc.addPage('a4', 'portrait')
+  doc.addPage('tabloid', 'portrait')
   addPageHeader(doc, 'Actions Register', project.name)
 
   const rows: string[][] = []
   for (const bt of project.bowties) {
     for (const cause of bt.causes) {
-      for (const barrier of cause.barriers) {
-        for (const action of barrier.actions ?? []) {
-          rows.push([
-            String(action.number),
-            bt.name,
-            'Barrier',
-            cause.label,
-            barrier.label,
-            action.text,
-            action.dueDate || '—'
-          ])
+      for (const b of cause.barriers) {
+        for (const a of b.actions ?? []) {
+          rows.push([String(a.number), bt.name, 'Barrier', cause.label, b.label, a.text, a.dueDate || '—'])
         }
       }
     }
     for (const con of bt.consequences) {
-      for (const mit of con.mitigations) {
-        for (const action of mit.actions ?? []) {
-          rows.push([
-            String(action.number),
-            bt.name,
-            'Mitigation',
-            con.label,
-            mit.label,
-            action.text,
-            action.dueDate || '—'
-          ])
+      for (const m of con.mitigations) {
+        for (const a of m.actions ?? []) {
+          rows.push([String(a.number), bt.name, 'Mitigation', con.label, m.label, a.text, a.dueDate || '—'])
         }
       }
     }
   }
 
   autoTable(doc, {
-    startY: 18,
+    startY: 20,
     head: [['#', 'Bowtie', 'Type', 'Threat / Consequence', 'Barrier / Mitigation', 'Action', 'Due Date']],
     body: rows.length > 0 ? rows : [['—', '—', '—', '—', '—', 'No actions recorded', '—']],
     theme: 'striped',
-    headStyles: { fillColor: [124, 58, 237], textColor: [255, 255, 255], fontSize: 7.5, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 7.5 },
-    columnStyles: { 5: { cellWidth: 60 } },
-    margin: { left: 8, right: 8 }
+    headStyles: { fillColor: VIOLET, textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: { 5: { cellWidth: 70 } },
+    margin: { left: 10, right: 10 }
   })
 }
 
@@ -326,39 +282,34 @@ export async function generatePdfReport(
   captureBowtie: (bowtieId: string) => Promise<string | null>,
   onProgress: (p: ReportProgress) => void
 ): Promise<string> {
-  // A4 portrait, landscape used per-bowtie
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  // Tabloid/Ledger paper (11×17"). Portrait by default; bowtie pages landscape.
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'tabloid' })
 
-  // ---- Cover page ----
-  onProgress({ step: 'Building cover page…', current: 0, total: project.bowties.length + 2 })
+  const total = project.bowties.length + 3
+  onProgress({ step: 'Building cover page…', current: 0, total })
   addCoverPage(doc, project)
 
-  // ---- Bowtie pages ----
+  // One landscape diagram page per bowtie (no per-bowtie tables).
   for (let i = 0; i < project.bowties.length; i++) {
     const bowtie = project.bowties[i]
-    onProgress({ step: `Capturing "${bowtie.name}"…`, current: i + 1, total: project.bowties.length + 2 })
-
-    // Landscape PNG page
+    onProgress({ step: `Capturing "${bowtie.name}"…`, current: i + 1, total })
     const png = await captureBowtie(bowtie.id)
-    if (png) addBowtiePngPage(doc, png, bowtie)
-
-    // Properties page (portrait)
-    addBowtiePropertiesPage(doc, project, bowtie)
+    if (png) await addBowtiePngPage(doc, project, bowtie, png)
   }
 
-  // ---- Actions register ----
-  onProgress({ step: 'Building actions register…', current: project.bowties.length + 1, total: project.bowties.length + 2 })
+  onProgress({ step: 'Building barriers & mitigations…', current: project.bowties.length + 1, total })
+  addControlsPage(doc, project)
+
+  onProgress({ step: 'Building actions register…', current: project.bowties.length + 2, total })
   addActionsPage(doc, project)
 
-  // Stamp footers on every page (jsPDF pages are 1-indexed)
+  // Footers on every page (1-indexed).
   const totalPages = doc.getNumberOfPages()
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p)
     addFooter(doc, p, totalPages)
   }
 
-  onProgress({ step: 'Finalising…', current: project.bowties.length + 2, total: project.bowties.length + 2 })
-
-  // Return as base64 so IPC can pass it to the main process for saving
+  onProgress({ step: 'Finalising…', current: total, total })
   return doc.output('datauristring').split(',')[1]
 }
