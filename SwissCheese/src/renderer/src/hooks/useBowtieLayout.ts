@@ -5,19 +5,15 @@ import type { Bowtie } from '../store/types'
 const NODE_HEIGHT = 60
 // Explicit width/height on every node so getNodesBounds computes correct right/bottom edges.
 const NODE_WIDTH = 150
-const CENTER_X = 760
 const TOP_EVENT_SIZE = 150
 const TOP_EVENT_Y = 360
 const HAZARD_Y = 150
 const CAUSE_X = 60
-const CONSEQUENCE_X = 1380
 const BARRIER_STEP = 180
 const FIRST_BARRIER_X = 280
+// Gap between the last barrier column and the top-event circle (mirrored on the right).
+const CENTER_GAP = 70
 const V_SPACING = 120
-
-// Center anchor points of the top-event circle
-const TOP_EVENT_CX = CENTER_X + TOP_EVENT_SIZE / 2
-const TOP_EVENT_CY = TOP_EVENT_Y + TOP_EVENT_SIZE / 2
 
 export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; edges: Edge[] } {
   return useMemo(() => {
@@ -27,6 +23,24 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
     const edges: Edge[] = []
 
     const edgeStyle = { stroke: '#374151', strokeWidth: 2 }
+
+    // ---- Dynamic horizontal layout ----
+    // The top event and consequence column shift outward based on the most-
+    // stacked threat / consequence so barriers & mitigations never crowd or
+    // overlap the centre when more are added.
+    const maxBarriers = bowtie.causes.reduce((m, c) => Math.max(m, c.barriers.length), 0)
+    const maxMitigations = bowtie.consequences.reduce((m, c) => Math.max(m, c.mitigations.length), 0)
+
+    const lastBarrierRight =
+      FIRST_BARRIER_X + Math.max(maxBarriers - 1, 0) * BARRIER_STEP + NODE_WIDTH
+    const CENTER_X = lastBarrierRight + CENTER_GAP
+    const TOP_EVENT_CX = CENTER_X + TOP_EVENT_SIZE / 2
+    const TOP_EVENT_CY = TOP_EVENT_Y + TOP_EVENT_SIZE / 2
+
+    const FIRST_MITIGATION_X = CENTER_X + TOP_EVENT_SIZE + CENTER_GAP
+    const lastMitigationRight =
+      FIRST_MITIGATION_X + Math.max(maxMitigations - 1, 0) * BARRIER_STEP + NODE_WIDTH
+    const CONSEQUENCE_X = lastMitigationRight + CENTER_GAP
 
     // Hazard box (above top event)
     const hazardNodeId = `hazard-${bowtie.id}`
@@ -141,13 +155,13 @@ export function useBowtieLayout(bowtie: Bowtie | undefined): { nodes: Node[]; ed
           severity: con.severity
         },
         width: NODE_WIDTH,
-        height: NODE_HEIGHT + 22,  // includes severity badge
+        height: NODE_HEIGHT + 22, // includes severity badge
         draggable: true
       })
 
       let prevId = bowtie.topEvent.id
       con.mitigations.forEach((mit, mi) => {
-        const px = TOP_EVENT_CX + 120 + mi * BARRIER_STEP
+        const px = FIRST_MITIGATION_X + mi * BARRIER_STEP
         nodes.push({
           id: mit.id,
           type: 'mitigation',

@@ -82,11 +82,11 @@ export function Toolbar({ onNewProject, onOpenProject }: ToolbarProps): React.Re
 
   return (
     <>
-      <div className="h-10 bg-slate-900 text-slate-100 flex items-center px-2 gap-1 relative z-30 shrink-0 border-b border-slate-700">
+      <div className="h-12 bg-slate-900 text-slate-100 flex items-center px-2 gap-1 relative z-30 shrink-0 border-b border-slate-700">
         {/* Logo + app name */}
-        <div className="flex items-center gap-2 mr-3 pl-1">
-          <AppLogo size={24} />
-          <span className="font-bold text-sm text-white tracking-tight">Swiss-Cheese</span>
+        <div className="flex items-center gap-2.5 mr-3 pl-1">
+          <AppLogo size={36} />
+          <span className="font-bold text-base text-white tracking-tight">Swiss Cheese</span>
         </div>
 
         <div className="relative">

@@ -1,7 +1,7 @@
 {
   "name": "swiss-cheese",
-  "version": "1.0.0",
-  "description": "Swiss-Cheese: Process Safety Bowtie Risk Analysis",
+  "version": "1.0.7",
+  "description": "Swiss Cheese: Process Safety Bowtie Risk Analysis",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -43,17 +43,21 @@
     "vite": "^5.4.19"
   },
   "build": {
-    "appId": "com.bowtie.app",
-    "productName": "Bowtie Risk Diagram",
+    "appId": "com.swisscheese.app",
+    "productName": "Swiss Cheese",
+    "artifactName": "SwissCheese-${version}-setup.${ext}",
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.png"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Swiss Cheese"
     },
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "build"
     },
     "files": [
       "out/**/*"

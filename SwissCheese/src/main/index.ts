@@ -15,7 +15,7 @@ function createWindow(): void {
     minWidth: 1100,
     minHeight: 680,
     backgroundColor: '#ffffff',
-    title: 'Bowtie Builder',
+    title: 'Swiss Cheese',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

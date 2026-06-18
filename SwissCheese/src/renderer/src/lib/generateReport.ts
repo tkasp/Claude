@@ -4,13 +4,12 @@ import autoTable from 'jspdf-autotable'
 import { jsPDF } from 'jspdf'
 import type { Project, Bowtie } from '../store/types'
 import { severityLabel } from './severity'
+import { logoPngDataUrl } from './logo'
 
 const BLUE: [number, number, number] = [37, 99, 235]
-const RED: [number, number, number] = [220, 38, 38]
 const AMBER: [number, number, number] = [245, 158, 11]
 const SLATE: [number, number, number] = [15, 23, 42]
 const VIOLET: [number, number, number] = [124, 58, 237]
-const LIGHT: [number, number, number] = [244, 245, 247]
 
 // Reads a PNG data-URL's intrinsic pixel size for aspect-ratio fitting.
 function imageSize(dataUrl: string): Promise<{ w: number; h: number }> {
@@ -22,51 +21,28 @@ function imageSize(dataUrl: string): Promise<{ w: number; h: number }> {
   })
 }
 
-// Draws the Swiss-Cheese ribbon logo at (x, y) with the given box size (mm).
-// Ribbon bowtie: two trapezoidal lobes tapering to a waist at center, with holes.
+// The logo is rasterised once from the shared SVG (lib/logo) so it renders
+// reliably and matches the in-app mark exactly. Cached for the whole report.
+let logoPng: string | null = null
+async function ensureLogo(): Promise<void> {
+  if (!logoPng) {
+    try {
+      logoPng = await logoPngDataUrl(256)
+    } catch {
+      logoPng = null
+    }
+  }
+}
+
+// Draws the Swiss-Cheese logo at (x, y) with the given box size (mm).
 function drawLogo(doc: jsPDF, x: number, y: number, s: number): void {
-  const p = (v: number): number => (v / 48) * s // map 48-unit viewBox to s mm
-
-  // Dark rounded-rect background
-  doc.setFillColor(...SLATE)
-  doc.roundedRect(x, y, s, s, p(10), p(10), 'F')
-
-  // Amber ribbon — left lobe (bezier curves tapering to waist at center)
-  doc.setFillColor(...AMBER)
-  doc.path(
-    [
-      { op: 'M', c: [x + p(22), y + p(21)] },
-      { op: 'C', c: [x + p(16), y + p(17), x + p(9), y + p(13), x + p(4), y + p(11)] },
-      { op: 'L', c: [x + p(4), y + p(37)] },
-      { op: 'C', c: [x + p(9), y + p(35), x + p(16), y + p(31), x + p(22), y + p(27)] },
-      { op: 'Z', c: [] }
-    ],
-    'F'
-  )
-  // Right lobe
-  doc.path(
-    [
-      { op: 'M', c: [x + p(26), y + p(21)] },
-      { op: 'C', c: [x + p(32), y + p(17), x + p(39), y + p(13), x + p(44), y + p(11)] },
-      { op: 'L', c: [x + p(44), y + p(37)] },
-      { op: 'C', c: [x + p(39), y + p(35), x + p(32), y + p(31), x + p(26), y + p(27)] },
-      { op: 'Z', c: [] }
-    ],
-    'F'
-  )
-  // Waist connector
-  doc.rect(x + p(22), y + p(21), p(4), p(6), 'F')
-
-  // Swiss-cheese holes (dark background color)
-  doc.setFillColor(...SLATE)
-  doc.circle(x + p(8.5), y + p(19), p(2.1), 'F')
-  doc.circle(x + p(13), y + p(29), p(1.8), 'F')
-  doc.circle(x + p(16), y + p(15), p(1.4), 'F')
-  doc.circle(x + p(7.5), y + p(31.5), p(1.2), 'F')
-  doc.circle(x + p(39.5), y + p(19), p(2.1), 'F')
-  doc.circle(x + p(35), y + p(29), p(1.8), 'F')
-  doc.circle(x + p(32), y + p(15), p(1.4), 'F')
-  doc.circle(x + p(40.5), y + p(31.5), p(1.2), 'F')
+  if (logoPng) {
+    doc.addImage(logoPng, 'PNG', x, y, s, s, undefined, 'FAST')
+  } else {
+    // Fallback: dark plate so the header still looks intentional.
+    doc.setFillColor(...SLATE)
+    doc.roundedRect(x, y, s, s, s / 5, s / 5, 'F')
+  }
 }
 
 function pageW(doc: jsPDF): number {
@@ -79,19 +55,19 @@ function pageH(doc: jsPDF): number {
 function addPageHeader(doc: jsPDF, title: string, subtitle = ''): void {
   const W = pageW(doc)
   doc.setFillColor(...SLATE)
-  doc.rect(0, 0, W, 16, 'F')
-  drawLogo(doc, 6, 2.5, 11)
+  doc.rect(0, 0, W, 20, 'F')
+  drawLogo(doc, 6, 2.5, 15)
   doc.setTextColor(255, 255, 255)
-  doc.setFontSize(10)
+  doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('Swiss-Cheese', 20, 8)
+  doc.text('Swiss Cheese', 25, 10)
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.text(title, W / 2, 8, { align: 'center' })
+  doc.setFontSize(11)
+  doc.text(title, W / 2, 9, { align: 'center' })
   if (subtitle) {
     doc.setFontSize(8)
     doc.setTextColor(148, 163, 184)
-    doc.text(subtitle, W / 2, 13, { align: 'center' })
+    doc.text(subtitle, W / 2, 15, { align: 'center' })
   }
   doc.setTextColor(0, 0, 0)
 }
@@ -115,12 +91,12 @@ function addCoverPage(doc: jsPDF, project: Project): void {
   doc.rect(0, 0, W, 90, 'F')
 
   // Logo, centred
-  drawLogo(doc, W / 2 - 16, 18, 32)
+  drawLogo(doc, W / 2 - 22, 12, 44)
 
   doc.setFontSize(13)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(148, 163, 184)
-  doc.text('SWISS-CHEESE', W / 2, 62, { align: 'center' })
+  doc.text('SWISS CHEESE', W / 2, 64, { align: 'center' })
 
   doc.setFontSize(28)
   doc.setFont('helvetica', 'bold')
@@ -175,7 +151,7 @@ async function addBowtiePngPage(doc: jsPDF, project: Project, bowtie: Bowtie, da
   addPageHeader(doc, `Bowtie: ${bowtie.name}`, project.name)
 
   // Properties strip under the header
-  let stripY = 20
+  let stripY = 24
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(...BLUE)
@@ -250,7 +226,7 @@ function addControlsPage(doc: jsPDF, project: Project): void {
   }
 
   autoTable(doc, {
-    startY: 20,
+    startY: 24,
     head: [['Bowtie', 'Type', 'Threat / Consequence', 'Barrier / Mitigation', 'Effectiveness', 'SECE', 'Severity', 'Effectiveness Basis']],
     body: rows.length > 0 ? rows : [['—', '—', '—', '—', '—', '—', '—', 'No barriers or mitigations recorded']],
     theme: 'striped',
@@ -285,7 +261,7 @@ function addActionsPage(doc: jsPDF, project: Project): void {
   }
 
   autoTable(doc, {
-    startY: 20,
+    startY: 24,
     head: [['#', 'Bowtie', 'Type', 'Threat / Consequence', 'Barrier / Mitigation', 'Action', 'Due Date']],
     body: rows.length > 0 ? rows : [['—', '—', '—', '—', '—', 'No actions recorded', '—']],
     theme: 'striped',
@@ -312,6 +288,7 @@ export async function generatePdfReport(
 
   const total = project.bowties.length + 3
   onProgress({ step: 'Building cover page…', current: 0, total })
+  await ensureLogo()
   addCoverPage(doc, project)
 
   // One landscape diagram page per bowtie (no per-bowtie tables).
