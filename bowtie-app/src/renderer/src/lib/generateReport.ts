@@ -22,26 +22,51 @@ function imageSize(dataUrl: string): Promise<{ w: number; h: number }> {
   })
 }
 
-// Draws the Swiss-Cheese vector logo at (x, y) with the given box size (mm).
+// Draws the Swiss-Cheese ribbon logo at (x, y) with the given box size (mm).
+// Ribbon bowtie: two trapezoidal lobes tapering to a waist at center, with holes.
 function drawLogo(doc: jsPDF, x: number, y: number, s: number): void {
-  const p = (v: number): number => v / 48 * s // map 48-unit viewBox to s mm
-  // Left lobe
-  doc.setFillColor(...BLUE)
-  doc.triangle(x + p(7), y + p(11), x + p(23), y + p(24), x + p(7), y + p(37), 'F')
-  // Right lobe
-  doc.setFillColor(...RED)
-  doc.triangle(x + p(41), y + p(11), x + p(25), y + p(24), x + p(41), y + p(37), 'F')
-  // Holes
-  doc.setFillColor(...LIGHT)
-  doc.circle(x + p(11.5), y + p(19), p(1.9), 'F')
-  doc.circle(x + p(11), y + p(29), p(1.5), 'F')
-  doc.circle(x + p(36.5), y + p(19), p(1.9), 'F')
-  doc.circle(x + p(37), y + p(29), p(1.5), 'F')
-  // Centre event
+  const p = (v: number): number => (v / 48) * s // map 48-unit viewBox to s mm
+
+  // Dark rounded-rect background
   doc.setFillColor(...SLATE)
-  doc.circle(x + p(24), y + p(24), p(5), 'F')
+  doc.roundedRect(x, y, s, s, p(10), p(10), 'F')
+
+  // Amber ribbon — left lobe (bezier curves tapering to waist at center)
   doc.setFillColor(...AMBER)
-  doc.circle(x + p(24), y + p(24), p(2.4), 'F')
+  doc.path(
+    [
+      { op: 'M', c: [x + p(22), y + p(21)] },
+      { op: 'C', c: [x + p(16), y + p(17), x + p(9), y + p(13), x + p(4), y + p(11)] },
+      { op: 'L', c: [x + p(4), y + p(37)] },
+      { op: 'C', c: [x + p(9), y + p(35), x + p(16), y + p(31), x + p(22), y + p(27)] },
+      { op: 'Z', c: [] }
+    ],
+    'F'
+  )
+  // Right lobe
+  doc.path(
+    [
+      { op: 'M', c: [x + p(26), y + p(21)] },
+      { op: 'C', c: [x + p(32), y + p(17), x + p(39), y + p(13), x + p(44), y + p(11)] },
+      { op: 'L', c: [x + p(44), y + p(37)] },
+      { op: 'C', c: [x + p(39), y + p(35), x + p(32), y + p(31), x + p(26), y + p(27)] },
+      { op: 'Z', c: [] }
+    ],
+    'F'
+  )
+  // Waist connector
+  doc.rect(x + p(22), y + p(21), p(4), p(6), 'F')
+
+  // Swiss-cheese holes (dark background color)
+  doc.setFillColor(...SLATE)
+  doc.circle(x + p(8.5), y + p(19), p(2.1), 'F')
+  doc.circle(x + p(13), y + p(29), p(1.8), 'F')
+  doc.circle(x + p(16), y + p(15), p(1.4), 'F')
+  doc.circle(x + p(7.5), y + p(31.5), p(1.2), 'F')
+  doc.circle(x + p(39.5), y + p(19), p(2.1), 'F')
+  doc.circle(x + p(35), y + p(29), p(1.8), 'F')
+  doc.circle(x + p(32), y + p(15), p(1.4), 'F')
+  doc.circle(x + p(40.5), y + p(31.5), p(1.2), 'F')
 }
 
 function pageW(doc: jsPDF): number {
