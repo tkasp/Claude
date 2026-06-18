@@ -16,6 +16,7 @@ export const SEVERITY_OPTIONS: Array<Exclude<Consequence['severity'], ''>> = [
   'Negligible'
 ]
 
+// e.g. "5 - Catastrophic"; empty string when no severity set.
 export function severityLabel(severity: string): string {
   if (!severity) return ''
   const rank = SEVERITY_RANK[severity]

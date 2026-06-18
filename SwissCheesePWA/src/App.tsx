@@ -1,7 +1,5 @@
 import React, { useState } from 'react'
 import { useProjectStore, createProjectObject, type NewProjectInput } from './store/projectStore'
-import { projectFileHandles } from './store/projectStore'
-import { openProject } from './lib/browserAPI'
 import { Toolbar } from './components/toolbar/Toolbar'
 import { ProjectSidebar } from './components/ProjectSidebar'
 import { BowtieCanvas } from './components/BowtieCanvas'
@@ -11,6 +9,8 @@ import { NewProjectModal } from './components/NewProjectModal'
 import { ProjectSettingsView, BowtieSettingsView } from './components/SettingsView'
 import { HazidImportModal } from './components/HazidImportModal'
 import { ActionsModal } from './components/ActionsModal'
+import { openProject } from './lib/browserAPI'
+import { projectFileHandles } from './store/projectStore'
 
 export default function App(): React.ReactElement {
   const store = useProjectStore()

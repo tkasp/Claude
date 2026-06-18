@@ -31,6 +31,8 @@ function composeWithTitleBlock(
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
+      // The bowtie image may have been rendered at a higher pixel ratio; scale
+      // the footer to match so everything stays aligned and crisp.
       const scale = imgW > 0 ? img.width / imgW : 1
       const headingH = 30
       const tableH = 56
@@ -42,10 +44,12 @@ function composeWithTitleBlock(
       if (!ctx) return reject(new Error('no 2d context'))
       ctx.scale(scale, scale)
 
+      // White background + bowtie image (work in logical/unscaled coordinates)
       ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, canvas.width / scale, canvas.height / scale)
       ctx.drawImage(img, 0, 0, imgW, imgH)
 
+      // Heading strip
       ctx.fillStyle = '#1e3a8a'
       ctx.fillRect(0, imgH, imgW, headingH)
       ctx.fillStyle = '#ffffff'
@@ -53,6 +57,7 @@ function composeWithTitleBlock(
       ctx.textBaseline = 'middle'
       ctx.fillText(heading, 12, imgH + headingH / 2)
 
+      // Table of fields
       const tableTop = imgH + headingH
       const colW = imgW / fields.length
       ctx.strokeStyle = '#cbd5e1'
@@ -85,6 +90,9 @@ export async function captureBowtieDataUrl(
   const nodes = instance.getNodes()
   const bounds = getNodesBounds(nodes)
 
+  // Capture the full extent at zoom = 1 with a fixed pixel margin so nothing is
+  // ever cropped. Translating by (-bounds.x + margin) puts the top-left node at
+  // the margin offset; the canvas is sized to fit the entire diagram.
   const margin = 80
   const imgW = Math.max(Math.ceil(bounds.width) + margin * 2, 700)
   const imgH = Math.max(Math.ceil(bounds.height) + margin * 2, 420)

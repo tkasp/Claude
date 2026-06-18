@@ -26,22 +26,41 @@ export function ProjectSettingsView({ projectId }: { projectId: string }): React
         <p className="text-xs text-slate-400 mt-1">Facility-level details and default title block.</p>
 
         <div className={lblCls}>Facility / Project Name</div>
-        <input className={inputCls} value={project.name} onChange={(e) => store.updateProjectMeta(projectId, { name: e.target.value })} />
+        <input
+          className={inputCls}
+          value={project.name}
+          onChange={(e) => store.updateProjectMeta(projectId, { name: e.target.value })}
+        />
 
         <div className={lblCls}>Location</div>
-        <input className={inputCls} value={project.location} onChange={(e) => store.updateProjectMeta(projectId, { location: e.target.value })} />
+        <input
+          className={inputCls}
+          value={project.location}
+          onChange={(e) => store.updateProjectMeta(projectId, { location: e.target.value })}
+        />
 
         <div className={lblCls}>Description</div>
-        <textarea className={`${inputCls} resize-y`} rows={3} value={project.description} onChange={(e) => store.updateProjectMeta(projectId, { description: e.target.value })} />
+        <textarea
+          className={`${inputCls} resize-y`}
+          rows={3}
+          value={project.description}
+          onChange={(e) => store.updateProjectMeta(projectId, { description: e.target.value })}
+        />
 
         <div className="mt-6 mb-1 text-xs font-bold uppercase tracking-wider text-slate-300 border-t border-slate-600 pt-4">
           Default Title Block
         </div>
-        <p className="text-xs text-slate-400 mb-2">Used as the starting title block for new bowties in this project.</p>
+        <p className="text-xs text-slate-400 mb-2">
+          Used as the starting title block for new bowties in this project.
+        </p>
         {TB_FIELDS.map((f) => (
           <div key={f.key}>
             <div className={lblCls}>{f.label}</div>
-            <input className={inputCls} value={project.titleBlock[f.key]} onChange={(e) => store.updateProjectTitleBlock(projectId, { [f.key]: e.target.value })} />
+            <input
+              className={inputCls}
+              value={project.titleBlock[f.key]}
+              onChange={(e) => store.updateProjectTitleBlock(projectId, { [f.key]: e.target.value })}
+            />
           </div>
         ))}
       </div>
@@ -49,7 +68,13 @@ export function ProjectSettingsView({ projectId }: { projectId: string }): React
   )
 }
 
-export function BowtieSettingsView({ projectId, bowtieId }: { projectId: string; bowtieId: string }): React.ReactElement {
+export function BowtieSettingsView({
+  projectId,
+  bowtieId
+}: {
+  projectId: string
+  bowtieId: string
+}): React.ReactElement {
   const store = useProjectStore()
   const bowtie = store.getBowtie(projectId, bowtieId)
   if (!bowtie) return <div className="flex-1 bg-slate-800" />
@@ -58,10 +83,14 @@ export function BowtieSettingsView({ projectId, bowtieId }: { projectId: string;
     <div className="flex-1 bg-slate-800 overflow-y-auto p-8">
       <div className="max-w-xl">
         <h2 className="text-xl font-bold text-white">Bowtie Settings</h2>
-        <p className="text-xs text-slate-400 mt-1">Title block for "{bowtie.name}".</p>
+        <p className="text-xs text-slate-400 mt-1">Title block for “{bowtie.name}”.</p>
 
         <div className={lblCls}>Bowtie Name</div>
-        <input className={inputCls} value={bowtie.name} onChange={(e) => store.renameBowtie(projectId, bowtieId, e.target.value)} />
+        <input
+          className={inputCls}
+          value={bowtie.name}
+          onChange={(e) => store.renameBowtie(projectId, bowtieId, e.target.value)}
+        />
 
         <div className="mt-6 mb-1 text-xs font-bold uppercase tracking-wider text-slate-300 border-t border-slate-600 pt-4">
           Title Block
@@ -69,7 +98,13 @@ export function BowtieSettingsView({ projectId, bowtieId }: { projectId: string;
         {TB_FIELDS.map((f) => (
           <div key={f.key}>
             <div className={lblCls}>{f.label}</div>
-            <input className={inputCls} value={bowtie.titleBlock[f.key]} onChange={(e) => store.updateBowtieTitleBlock(projectId, bowtieId, { [f.key]: e.target.value })} />
+            <input
+              className={inputCls}
+              value={bowtie.titleBlock[f.key]}
+              onChange={(e) =>
+                store.updateBowtieTitleBlock(projectId, bowtieId, { [f.key]: e.target.value })
+              }
+            />
           </div>
         ))}
       </div>

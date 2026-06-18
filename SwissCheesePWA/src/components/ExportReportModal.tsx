@@ -3,10 +3,14 @@ import { X, FileText, Loader, CheckCircle, AlertCircle } from 'lucide-react'
 import { useProjectStore } from '../store/projectStore'
 import { captureActiveBowtie } from '../lib/exportRegistry'
 import { generatePdfReport, type ReportProgress } from '../lib/generateReport'
-import { savePdf } from '../lib/browserAPI'
 import type { Project } from '../store/types'
+import { savePdf } from '../lib/browserAPI'
 
-interface Props { project: Project; onClose: () => void }
+interface Props {
+  project: Project
+  onClose: () => void
+}
+
 type Phase = 'idle' | 'running' | 'done' | 'error'
 
 export function ExportReportModal({ project, onClose }: Props): React.ReactElement {
@@ -67,21 +71,34 @@ export function ExportReportModal({ project, onClose }: Props): React.ReactEleme
             <FileText size={18} className="text-blue-400" />
             <span className="font-semibold text-white">Export PDF Report</span>
           </div>
-          {phase !== 'running' && <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18} /></button>}
+          {phase !== 'running' && (
+            <button onClick={onClose} className="text-slate-400 hover:text-white">
+              <X size={18} />
+            </button>
+          )}
         </div>
 
         <div className="p-5">
           {phase === 'idle' && (
             <>
-              <p className="text-sm text-slate-300 mb-4">Generates a full PDF report for <span className="font-semibold text-white">{project.name}</span> including:</p>
+              <p className="text-sm text-slate-300 mb-4">
+                Generates a full PDF report for <span className="font-semibold text-white">{project.name}</span> including:
+              </p>
               <ul className="text-sm text-slate-400 space-y-1 mb-6 ml-3 list-disc list-inside">
                 <li>Cover page with project details</li>
                 <li>Full-page diagram PNG for each of the {project.bowties.length} bowtie{project.bowties.length !== 1 ? 's' : ''}</li>
                 <li>Bowtie properties, barriers &amp; mitigations tables</li>
                 <li>Actions register</li>
               </ul>
-              <p className="text-xs text-slate-500 mb-5">The app will briefly cycle through each bowtie to capture its diagram. This takes a few seconds.</p>
-              <button onClick={handleStart} className="w-full py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-500 text-sm">Generate &amp; Download Report</button>
+              <p className="text-xs text-slate-500 mb-5">
+                The app will briefly cycle through each bowtie to capture its diagram. This takes a few seconds.
+              </p>
+              <button
+                onClick={handleStart}
+                className="w-full py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-500 text-sm"
+              >
+                Generate &amp; Save Report
+              </button>
             </>
           )}
 
@@ -101,7 +118,7 @@ export function ExportReportModal({ project, onClose }: Props): React.ReactEleme
           {phase === 'done' && (
             <div className="flex flex-col items-center gap-3 py-4">
               <CheckCircle size={40} className="text-green-400" />
-              <div className="text-sm font-semibold text-white">Report downloaded</div>
+              <div className="text-sm font-semibold text-white">Report saved successfully</div>
               <button onClick={onClose} className="mt-2 px-5 py-2 rounded bg-slate-700 text-slate-200 text-sm hover:bg-slate-600">Close</button>
             </div>
           )}

@@ -1,7 +1,14 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import {
-  ReactFlow, ReactFlowProvider, Background, Controls, MiniMap,
-  BackgroundVariant, useReactFlow, type Node, type NodeTypes
+  ReactFlow,
+  ReactFlowProvider,
+  Background,
+  Controls,
+  MiniMap,
+  BackgroundVariant,
+  useReactFlow,
+  type Node,
+  type NodeTypes
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useProjectStore } from '../store/projectStore'
@@ -25,6 +32,7 @@ const nodeTypes: NodeTypes = {
   mitigation: MitigationNode as unknown as NodeTypes[string]
 }
 
+// Cause/consequence rows store a manual centre-Y; node top-left is centre - half height.
 const NODE_HALF_HEIGHT = 30
 
 function CanvasInner({ project, bowtie }: { project: Project; bowtie: Bowtie }): React.ReactElement {
@@ -37,6 +45,8 @@ function CanvasInner({ project, bowtie }: { project: Project; bowtie: Bowtie }):
 
   const onPaneClick = useCallback(() => setSelectedNode(null), [setSelectedNode])
 
+  // Only threat (cause) and consequence rows are draggable, vertically. Persist
+  // the new centre-Y so the whole row (and its barriers/mitigations) reflows.
   const onNodeDragStop = useCallback(
     (_e: unknown, node: Node) => {
       const centreY = node.position.y + NODE_HALF_HEIGHT
@@ -60,19 +70,28 @@ function CanvasInner({ project, bowtie }: { project: Project; bowtie: Bowtie }):
   return (
     <div ref={wrapperRef} style={{ flex: 1, minWidth: 0, background: '#f4f5f7' }}>
       <ReactFlow
-        nodes={nodes} edges={edges} nodeTypes={nodeTypes}
-        onPaneClick={onPaneClick} onNodeDragStop={onNodeDragStop}
-        fitView fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.2} maxZoom={2}
-        nodesDraggable nodesConnectable={false} elementsSelectable
-        zoomOnScroll panOnScroll={false}
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        onPaneClick={onPaneClick}
+        onNodeDragStop={onNodeDragStop}
+        fitView
+        fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.2}
+        maxZoom={2}
+        nodesDraggable
+        nodesConnectable={false}
+        elementsSelectable
+        zoomOnScroll
+        panOnScroll={false}
         proOptions={{ hideAttribution: true }}
         style={{ background: '#f4f5f7' }}
       >
         <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="#e2e8f0" />
         <Controls showInteractive={false} />
         <MiniMap
-          pannable zoomable
+          pannable
+          zoomable
           nodeColor={(n) => {
             if (n.type === 'topEvent') return '#ea580c'
             if (n.type === 'cause') return '#1d4ed8'
@@ -88,7 +107,13 @@ function CanvasInner({ project, bowtie }: { project: Project; bowtie: Bowtie }):
   )
 }
 
-export function BowtieCanvas({ project, bowtie }: { project: Project; bowtie: Bowtie }): React.ReactElement {
+export function BowtieCanvas({
+  project,
+  bowtie
+}: {
+  project: Project
+  bowtie: Bowtie
+}): React.ReactElement {
   return (
     <ReactFlowProvider>
       <CanvasInner project={project} bowtie={bowtie} />

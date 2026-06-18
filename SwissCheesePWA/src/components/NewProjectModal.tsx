@@ -28,7 +28,8 @@ export function NewProjectModal({
       <div className="bg-white rounded-lg shadow-2xl w-[460px] max-h-[90vh] overflow-y-auto p-5">
         <h2 className="text-lg font-bold text-gray-800">New Facility Project</h2>
         <p className="text-xs text-gray-500 mt-1">
-          These details populate the title block. They can be changed later in Project / Bowtie Settings.
+          These details populate the title block. They can be changed later in Project / Bowtie
+          Settings.
         </p>
 
         <div className={lblCls}>Facility / Project Name *</div>
@@ -38,7 +39,12 @@ export function NewProjectModal({
         <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} />
 
         <div className={lblCls}>Description</div>
-        <textarea className={`${inputCls} resize-y`} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+        <textarea
+          className={`${inputCls} resize-y`}
+          rows={2}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
 
         <div className="mt-4 mb-1 text-xs font-bold uppercase tracking-wider text-gray-600 border-t border-gray-200 pt-3">
           Title Block
@@ -68,13 +74,23 @@ export function NewProjectModal({
         </div>
 
         <div className="flex justify-end gap-2 mt-5">
-          <button className="px-4 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100" onClick={onCancel}>
+          <button
+            className="px-4 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+            onClick={onCancel}
+          >
             Cancel
           </button>
           <button
             disabled={!canCreate}
             className="px-4 py-1.5 text-sm rounded bg-blue-700 text-white font-semibold hover:bg-blue-800 disabled:opacity-50"
-            onClick={() => onCreate({ name: name.trim(), location: location.trim(), description: description.trim(), titleBlock: { documentNumber, documentName, revBy, revDate, revNumber } })}
+            onClick={() =>
+              onCreate({
+                name: name.trim(),
+                location: location.trim(),
+                description: description.trim(),
+                titleBlock: { documentNumber, documentName, revBy, revDate, revNumber }
+              })
+            }
           >
             Create Project
           </button>

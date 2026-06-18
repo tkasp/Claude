@@ -1,6 +1,12 @@
-const BG = '#0f172a'
-const AMBER = '#f5b417'
+// Single source of truth for the Swiss-Cheese logo mark.
+// A classic fabric bow-tie silhouette in amber with "swiss cheese" holes,
+// on a dark rounded-square background. Used by the React AppLogo, the PDF
+// report, and (rasterised) the app icon.
 
+const BG = '#0f172a' // dark slate
+const AMBER = '#f5b417' // warm yellow ribbon
+
+// 48×48 viewBox. Two flared wings meeting at a narrow centre knot.
 const MARK = `
   <path fill="${AMBER}" d="M22 19 L5 12 Q3 24 5 36 L22 29 Z" />
   <path fill="${AMBER}" d="M26 19 L43 12 Q45 24 43 36 L26 29 Z" />
@@ -15,11 +21,13 @@ const MARK = `
   <circle cx="32" cy="16" r="1.2" fill="${BG}" />
 `
 
+/** Full logo SVG markup. `rounded` draws the dark rounded-square plate. */
 export function logoSvg(size: number, rounded = true): string {
   const bg = rounded ? `<rect width="48" height="48" rx="10" fill="${BG}" />` : ''
   return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">${bg}${MARK}</svg>`
 }
 
+/** Rasterise the logo to a PNG data URL at the given pixel size (for jsPDF / icons). */
 export function logoPngDataUrl(px = 256): Promise<string> {
   return new Promise((resolve, reject) => {
     const svg = logoSvg(px)

@@ -9,7 +9,15 @@ const FIELDS: { key: keyof Bowtie['titleBlock']; label: string }[] = [
   { key: 'revNumber', label: 'Rev #' }
 ]
 
-export function TitleBlock({ project, bowtie }: { project: Project; bowtie: Bowtie }): React.ReactElement {
+// Read-only title block strip shown beneath the canvas. Editing happens in
+// Bowtie Settings, so these fields are intentionally greyed and non-editable.
+export function TitleBlock({
+  project,
+  bowtie
+}: {
+  project: Project
+  bowtie: Bowtie
+}): React.ReactElement {
   return (
     <div className="flex shrink-0 border-t-2 border-gray-300 bg-gray-100" style={{ height: 56 }} id="title-block">
       <div className="flex flex-col justify-center px-3 border-r border-gray-300" style={{ minWidth: 150 }}>

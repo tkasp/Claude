@@ -82,7 +82,6 @@ export async function parseHazidExcel(base64: string): Promise<HazidParseResult>
   const binStr = atob(base64)
   const buf = new Uint8Array(binStr.length)
   for (let i = 0; i < binStr.length; i++) buf[i] = binStr.charCodeAt(i)
-
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.load(buf.buffer as ArrayBuffer)
 

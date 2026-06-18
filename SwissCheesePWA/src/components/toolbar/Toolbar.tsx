@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { useProjectStore } from '../../store/projectStore'
-import { projectFileHandles } from '../../store/projectStore'
 import { captureActiveBowtie } from '../../lib/exportRegistry'
-import { saveProject, exportPng, exportExcel } from '../../lib/browserAPI'
 import { AppLogo } from '../AppLogo'
 import { ExportReportModal } from '../ExportReportModal'
+import { saveProject, exportPng, exportExcel } from '../../lib/browserAPI'
+import { projectFileHandles } from '../../store/projectStore'
 
 interface ToolbarProps {
   onNewProject: () => void
@@ -106,8 +106,20 @@ export function Toolbar({ onNewProject, onOpenProject }: ToolbarProps): React.Re
             <>
               <div className="fixed inset-0 z-30" onClick={closeMenu} />
               <div className="absolute left-0 top-9 z-40 w-56 bg-white rounded shadow-xl border border-gray-200 py-1">
-                <MenuItem label="New Project…" onClick={() => { closeMenu(); onNewProject() }} />
-                <MenuItem label="Open Project…" onClick={() => { closeMenu(); onOpenProject() }} />
+                <MenuItem
+                  label="New Project…"
+                  onClick={() => {
+                    closeMenu()
+                    onNewProject()
+                  }}
+                />
+                <MenuItem
+                  label="Open Project…"
+                  onClick={() => {
+                    closeMenu()
+                    onOpenProject()
+                  }}
+                />
                 <MenuItem label="Save Project" onClick={handleSave} disabled={!project} />
                 <div className="my-1 border-t border-gray-200" />
                 <MenuItem
@@ -124,15 +136,26 @@ export function Toolbar({ onNewProject, onOpenProject }: ToolbarProps): React.Re
                   onClick={() => {
                     closeMenu()
                     if (project && activeBowtieId)
-                      store.setActiveView({ kind: 'bowtieSettings', projectId: project.id, bowtieId: activeBowtieId })
+                      store.setActiveView({
+                        kind: 'bowtieSettings',
+                        projectId: project.id,
+                        bowtieId: activeBowtieId
+                      })
                   }}
                 />
                 <div className="my-1 border-t border-gray-200" />
                 <MenuItem label="Export Bowtie as PNG" onClick={handleExportPng} disabled={!activeBowtieId} />
-                <MenuItem label="Export Barriers to Excel" onClick={handleExportExcel} disabled={!project} />
+                <MenuItem
+                  label="Export Barriers to Excel"
+                  onClick={handleExportExcel}
+                  disabled={!project}
+                />
                 <MenuItem
                   label="Export PDF Report…"
-                  onClick={() => { closeMenu(); setShowReport(true) }}
+                  onClick={() => {
+                    closeMenu()
+                    setShowReport(true)
+                  }}
                   disabled={!project}
                 />
               </div>

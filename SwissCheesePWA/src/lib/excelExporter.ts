@@ -1,5 +1,27 @@
 import ExcelJS from 'exceljs'
-import type { Project } from '../store/types'
+
+interface BarrierAction {
+  number: number
+  text: string
+  dueDate: string
+}
+interface Barrier {
+  label: string
+  effectiveness: string
+  effectivenessDescription: string
+  isSECE: boolean
+  seceId: string
+  actions?: BarrierAction[]
+}
+interface Cause {
+  label: string
+  barriers: Barrier[]
+}
+interface Consequence {
+  label: string
+  severity: string
+  mitigations: Barrier[]
+}
 
 const SEVERITY_RANK: Record<string, number> = {
   Catastrophic: 5,
@@ -14,6 +36,27 @@ function severityLabel(severity: string): string {
   const rank = SEVERITY_RANK[severity]
   return rank ? `${rank} - ${severity}` : severity
 }
+interface TitleBlock {
+  documentNumber: string
+  documentName: string
+  revBy: string
+  revDate: string
+  revNumber: string
+}
+interface Bowtie {
+  name: string
+  hazard: { hazardId: string; name: string }
+  topEvent: { label: string }
+  causes: Cause[]
+  consequences: Consequence[]
+  titleBlock: TitleBlock
+}
+interface Project {
+  name: string
+  location: string
+  description: string
+  bowties: Bowtie[]
+}
 
 const EFFECTIVENESS_FILL: Record<string, string> = {
   Effective: 'FF16A34A',
@@ -22,24 +65,29 @@ const EFFECTIVENESS_FILL: Record<string, string> = {
 }
 
 const HEADERS = [
-  'Hazard ID', 'Hazard', 'Top Event', 'Threat / Consequence', 'Type',
-  'Barrier / Mitigation', 'Effectiveness', 'Effectiveness Description',
-  'SECE', 'SECE ID', 'Severity'
+  'Hazard ID',
+  'Hazard',
+  'Top Event',
+  'Threat / Consequence',
+  'Type',
+  'Barrier / Mitigation',
+  'Effectiveness',
+  'Effectiveness Description',
+  'SECE',
+  'SECE ID',
+  'Severity'
 ]
-const COL_WIDTHS = [14, 22, 22, 28, 12, 28, 18, 40, 8, 14, 16]
 
-function thinBorder(argb: string): Partial<ExcelJS.Borders> {
-  const side: ExcelJS.Border = { style: 'thin', color: { argb } }
-  return { top: side, left: side, bottom: side, right: side }
-}
+const COL_WIDTHS = [14, 22, 22, 28, 12, 28, 18, 40, 8, 14, 16]
 
 export async function generateExcel(project: Project): Promise<ArrayBuffer> {
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'Swiss Cheese'
+  wb.creator = 'Bowtie Builder'
   wb.created = new Date()
 
   const sheet = wb.addWorksheet('Barriers & Mitigations')
   sheet.columns = COL_WIDTHS.map((w) => ({ width: w }))
+
   const lastCol = HEADERS.length
 
   const addProjectHeader = (): void => {
@@ -50,18 +98,26 @@ export async function generateExcel(project: Project): Promise<ArrayBuffer> {
     sheet.addRow([])
   }
 
-  const addBowtieBlock = (b: Project['bowties'][0]): void => {
+  const addBowtieReportBlock = (b: Bowtie): void => {
     const nameRow = sheet.addRow([`Bowtie: ${b.name}`])
     nameRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } }
-    nameRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }
+    nameRow.getCell(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E3A8A' }
+    }
     sheet.mergeCells(nameRow.number, 1, nameRow.number, lastCol)
 
     const tb = b.titleBlock
     const tbRow = sheet.addRow([
-      `Doc No.: ${tb.documentNumber || '—'}`, '',
-      `Doc Name: ${tb.documentName || '—'}`, '',
-      `Rev By: ${tb.revBy || '—'}`, '',
-      `Rev Date: ${tb.revDate || '—'}`, '',
+      `Doc No.: ${tb.documentNumber || '—'}`,
+      '',
+      `Doc Name: ${tb.documentName || '—'}`,
+      '',
+      `Rev By: ${tb.revBy || '—'}`,
+      '',
+      `Rev Date: ${tb.revDate || '—'}`,
+      '',
       `Rev #: ${tb.revNumber || '—'}`
     ])
     tbRow.font = { size: 10, italic: true, color: { argb: 'FF374151' } }
@@ -79,13 +135,21 @@ export async function generateExcel(project: Project): Promise<ArrayBuffer> {
     const pushRow = (
       threatOrCon: string,
       type: 'Barrier' | 'Mitigation',
-      item: Project['bowties'][0]['causes'][0]['barriers'][0],
+      item: Barrier,
       severity: string
     ): void => {
       const row = sheet.addRow([
-        b.hazard.hazardId, b.hazard.name, b.topEvent.label,
-        threatOrCon, type, item.label, item.effectiveness,
-        item.effectivenessDescription, item.isSECE ? 'Yes' : 'No', item.seceId, severity
+        b.hazard.hazardId,
+        b.hazard.name,
+        b.topEvent.label,
+        threatOrCon,
+        type,
+        item.label,
+        item.effectiveness,
+        item.effectivenessDescription,
+        item.isSECE ? 'Yes' : 'No',
+        item.seceId,
+        severity
       ])
       row.eachCell((cell) => {
         cell.alignment = { vertical: 'middle', wrapText: true }
@@ -112,47 +176,81 @@ export async function generateExcel(project: Project): Promise<ArrayBuffer> {
   }
 
   addProjectHeader()
-  for (const b of project.bowties) addBowtieBlock(b)
+  for (const b of project.bowties) addBowtieReportBlock(b)
 
-  // Actions sheet
-  const actSheet = wb.addWorksheet('Actions')
-  const ACTION_HEADERS = ['Action #', 'Bowtie', 'Type', 'Barrier / Mitigation', 'Threat / Consequence', 'Action Description', 'Due Date']
-  const ACTION_COL_WIDTHS = [10, 22, 12, 28, 28, 50, 14]
-  actSheet.columns = ACTION_COL_WIDTHS.map((w) => ({ width: w }))
+  addActionsSheet(wb, project)
 
-  const actHeader = actSheet.addRow(ACTION_HEADERS)
-  actHeader.eachCell((cell) => {
+  const buffer = await wb.xlsx.writeBuffer()
+  return buffer as ArrayBuffer
+}
+
+const ACTION_HEADERS = [
+  'Action #',
+  'Bowtie',
+  'Type',
+  'Barrier / Mitigation',
+  'Threat / Consequence',
+  'Action Description',
+  'Due Date'
+]
+const ACTION_COL_WIDTHS = [10, 22, 12, 28, 28, 50, 14]
+
+function addActionsSheet(wb: ExcelJS.Workbook, project: Project): void {
+  const sheet = wb.addWorksheet('Actions')
+  sheet.columns = ACTION_COL_WIDTHS.map((w) => ({ width: w }))
+
+  const header = sheet.addRow(ACTION_HEADERS)
+  header.eachCell((cell) => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } }
     cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
     cell.border = thinBorder('FF000000')
   })
-  actHeader.height = 24
+  header.height = 24
+
+  const pushActions = (
+    bowtieName: string,
+    type: 'Barrier' | 'Mitigation',
+    item: Barrier,
+    parentLabel: string
+  ): void => {
+    for (const action of item.actions ?? []) {
+      const row = sheet.addRow([
+        action.number,
+        bowtieName,
+        type,
+        item.label,
+        parentLabel,
+        action.text,
+        action.dueDate
+      ])
+      row.eachCell((cell) => {
+        cell.alignment = { vertical: 'middle', wrapText: true }
+        cell.border = thinBorder('FFCBD5E1')
+      })
+    }
+  }
 
   let any = false
   for (const b of project.bowties) {
-    for (const cause of b.causes) {
+    for (const cause of b.causes)
       for (const barrier of cause.barriers) {
-        for (const a of barrier.actions ?? []) {
-          any = true
-          const row = actSheet.addRow([a.number, b.name, 'Barrier', barrier.label, cause.label, a.text, a.dueDate])
-          row.eachCell((cell) => { cell.alignment = { vertical: 'middle', wrapText: true }; cell.border = thinBorder('FFCBD5E1') })
-        }
+        if (barrier.actions?.length) any = true
+        pushActions(b.name, 'Barrier', barrier, cause.label)
       }
-    }
-    for (const con of b.consequences) {
+    for (const con of b.consequences)
       for (const mit of con.mitigations) {
-        for (const a of mit.actions ?? []) {
-          any = true
-          const row = actSheet.addRow([a.number, b.name, 'Mitigation', mit.label, con.label, a.text, a.dueDate])
-          row.eachCell((cell) => { cell.alignment = { vertical: 'middle', wrapText: true }; cell.border = thinBorder('FFCBD5E1') })
-        }
+        if (mit.actions?.length) any = true
+        pushActions(b.name, 'Mitigation', mit, con.label)
       }
-    }
-  }
-  if (!any) {
-    actSheet.addRow(['No actions have been recorded.']).font = { italic: true, color: { argb: 'FF94A3B8' } }
   }
 
-  return wb.xlsx.writeBuffer()
+  if (!any) {
+    sheet.addRow(['No actions have been recorded.']).font = { italic: true, color: { argb: 'FF94A3B8' } }
+  }
+}
+
+function thinBorder(argb: string): Partial<ExcelJS.Borders> {
+  const side: ExcelJS.Border = { style: 'thin', color: { argb } }
+  return { top: side, left: side, bottom: side, right: side }
 }

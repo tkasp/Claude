@@ -11,6 +11,7 @@ const AMBER: [number, number, number] = [245, 158, 11]
 const SLATE: [number, number, number] = [15, 23, 42]
 const VIOLET: [number, number, number] = [124, 58, 237]
 
+// Reads a PNG data-URL's intrinsic pixel size for aspect-ratio fitting.
 function imageSize(dataUrl: string): Promise<{ w: number; h: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -20,24 +21,36 @@ function imageSize(dataUrl: string): Promise<{ w: number; h: number }> {
   })
 }
 
+// The logo is rasterised once from the shared SVG (lib/logo) so it renders
+// reliably and matches the in-app mark exactly. Cached for the whole report.
 let logoPng: string | null = null
 async function ensureLogo(): Promise<void> {
   if (!logoPng) {
-    try { logoPng = await logoPngDataUrl(256) } catch { logoPng = null }
+    try {
+      logoPng = await logoPngDataUrl(256)
+    } catch {
+      logoPng = null
+    }
   }
 }
 
+// Draws the Swiss-Cheese logo at (x, y) with the given box size (mm).
 function drawLogo(doc: jsPDF, x: number, y: number, s: number): void {
   if (logoPng) {
     doc.addImage(logoPng, 'PNG', x, y, s, s, undefined, 'FAST')
   } else {
+    // Fallback: dark plate so the header still looks intentional.
     doc.setFillColor(...SLATE)
     doc.roundedRect(x, y, s, s, s / 5, s / 5, 'F')
   }
 }
 
-function pageW(doc: jsPDF): number { return doc.internal.pageSize.getWidth() }
-function pageH(doc: jsPDF): number { return doc.internal.pageSize.getHeight() }
+function pageW(doc: jsPDF): number {
+  return doc.internal.pageSize.getWidth()
+}
+function pageH(doc: jsPDF): number {
+  return doc.internal.pageSize.getHeight()
+}
 
 function addPageHeader(doc: jsPDF, title: string, subtitle = ''): void {
   const W = pageW(doc)
@@ -77,6 +90,7 @@ function addCoverPage(doc: jsPDF, project: Project): void {
   doc.setFillColor(...SLATE)
   doc.rect(0, 0, W, 90, 'F')
 
+  // Logo, centred
   drawLogo(doc, W / 2 - 22, 12, 44)
 
   doc.setFontSize(13)
@@ -94,6 +108,7 @@ function addCoverPage(doc: jsPDF, project: Project): void {
   doc.setTextColor(148, 163, 184)
   doc.text('Bowtie Risk Analysis Report', W / 2, 85, { align: 'center' })
 
+  // Details
   let y = 108
   const kv = (label: string, value: string): void => {
     doc.setFontSize(10)
@@ -111,6 +126,7 @@ function addCoverPage(doc: jsPDF, project: Project): void {
   kv('Bowties:', String(project.bowties.length))
   kv('Date:', new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' }))
 
+  // Default title block
   y += 6
   const tb = project.titleBlock
   autoTable(doc, {
@@ -127,12 +143,14 @@ function addCoverPage(doc: jsPDF, project: Project): void {
   doc.rect(0, H - 8, W, 8, 'F')
 }
 
+// Landscape full-page bowtie diagram, aspect-ratio preserved + properties strip.
 async function addBowtiePngPage(doc: jsPDF, project: Project, bowtie: Bowtie, dataUrl: string): Promise<void> {
   doc.addPage('tabloid', 'landscape')
   const W = pageW(doc)
   const H = pageH(doc)
   addPageHeader(doc, `Bowtie: ${bowtie.name}`, project.name)
 
+  // Properties strip under the header
   let stripY = 24
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
@@ -148,6 +166,7 @@ async function addBowtiePngPage(doc: jsPDF, project: Project, bowtie: Bowtie, da
   doc.text(bowtie.topEvent.label || '—', W / 2 - 18, stripY + 4, { maxWidth: W / 2 })
   stripY += 8
 
+  // Image area
   const imgTop = stripY
   const maxW = W - 20
   const maxH = H - imgTop - 14
@@ -158,12 +177,18 @@ async function addBowtiePngPage(doc: jsPDF, project: Project, bowtie: Bowtie, da
     const ar = w / h
     drawW = maxW
     drawH = maxW / ar
-    if (drawH > maxH) { drawH = maxH; drawW = maxH * ar }
-  } catch { /* fall back to box dims */ }
+    if (drawH > maxH) {
+      drawH = maxH
+      drawW = maxH * ar
+    }
+  } catch {
+    /* fall back to box dims */
+  }
   const imgX = (W - drawW) / 2
   doc.addImage(dataUrl, 'PNG', imgX, imgTop, drawW, drawH, undefined, 'FAST')
 }
 
+// Combined barriers & mitigations table across all bowties (portrait).
 function addControlsPage(doc: jsPDF, project: Project): void {
   doc.addPage('tabloid', 'portrait')
   addPageHeader(doc, 'Barriers & Mitigations', project.name)
@@ -172,15 +197,30 @@ function addControlsPage(doc: jsPDF, project: Project): void {
   for (const bt of project.bowties) {
     for (const cause of bt.causes) {
       for (const b of cause.barriers) {
-        rows.push([bt.name, 'Barrier', cause.label, b.label, b.effectiveness || '—',
-          b.isSECE ? (b.seceId ? `SECE #${b.seceId}` : 'SECE') : '—', '—', b.effectivenessDescription || '—'])
+        rows.push([
+          bt.name,
+          'Barrier',
+          cause.label,
+          b.label,
+          b.effectiveness || '—',
+          b.isSECE ? (b.seceId ? `SECE #${b.seceId}` : 'SECE') : '—',
+          '—',
+          b.effectivenessDescription || '—'
+        ])
       }
     }
     for (const con of bt.consequences) {
       for (const m of con.mitigations) {
-        rows.push([bt.name, 'Mitigation', con.label, m.label, m.effectiveness || '—',
+        rows.push([
+          bt.name,
+          'Mitigation',
+          con.label,
+          m.label,
+          m.effectiveness || '—',
           m.isSECE ? (m.seceId ? `SECE #${m.seceId}` : 'SECE') : '—',
-          severityLabel(con.severity) || '—', m.effectivenessDescription || '—'])
+          severityLabel(con.severity) || '—',
+          m.effectivenessDescription || '—'
+        ])
       }
     }
   }
@@ -197,6 +237,7 @@ function addControlsPage(doc: jsPDF, project: Project): void {
   })
 }
 
+// Combined actions register across all bowties (portrait).
 function addActionsPage(doc: jsPDF, project: Project): void {
   doc.addPage('tabloid', 'portrait')
   addPageHeader(doc, 'Actions Register', project.name)
@@ -242,6 +283,7 @@ export async function generatePdfReport(
   captureBowtie: (bowtieId: string) => Promise<string | null>,
   onProgress: (p: ReportProgress) => void
 ): Promise<string> {
+  // Tabloid/Ledger paper (11×17"). Portrait by default; bowtie pages landscape.
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'tabloid' })
 
   const total = project.bowties.length + 3
@@ -249,6 +291,7 @@ export async function generatePdfReport(
   await ensureLogo()
   addCoverPage(doc, project)
 
+  // One landscape diagram page per bowtie (no per-bowtie tables).
   for (let i = 0; i < project.bowties.length; i++) {
     const bowtie = project.bowties[i]
     onProgress({ step: `Capturing "${bowtie.name}"…`, current: i + 1, total })
@@ -262,6 +305,7 @@ export async function generatePdfReport(
   onProgress({ step: 'Building actions register…', current: project.bowties.length + 2, total })
   addActionsPage(doc, project)
 
+  // Footers on every page (1-indexed).
   const totalPages = doc.getNumberOfPages()
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p)

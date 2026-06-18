@@ -1,10 +1,9 @@
+import { projectFileHandles } from '../store/projectStore'
 import { generateExcel } from './excelExporter'
-import { parseHazidExcel, type HazidParseResult } from './hazidParser'
+import { parseHazidExcel } from './hazidParser'
+import type { HazidParseResult } from './hazidParser'
 import type { Project } from '../store/types'
 import { v4 as uuid } from 'uuid'
-
-// Module-level map: projectId → FileSystemFileHandle (not serializable, kept outside Zustand)
-export const projectFileHandles = new Map<string, FileSystemFileHandle>()
 
 // ── Project save / open ──────────────────────────────────────────────────────
 
@@ -18,13 +17,13 @@ export async function saveProject(
       handle = await (window as any).showSaveFilePicker({
         suggestedName: 'project.bowtie',
         types: [{ description: 'Bowtie Project', accept: { 'application/json': ['.bowtie'] } }]
-      }) as FileSystemFileHandle
-      projectFileHandles.set(projectId, handle)
+      })
+      projectFileHandles.set(projectId, handle!)
     }
-    const writable = await handle.createWritable()
+    const writable = await handle!.createWritable()
     await writable.write(json)
     await writable.close()
-    return { success: true, fileName: handle.name }
+    return { success: true, fileName: handle!.name }
   } catch (e: any) {
     if (e?.name === 'AbortError') return { success: false }
     throw e
@@ -36,7 +35,7 @@ export async function openProject(): Promise<{ success: boolean; data?: string; 
     const [handle] = await (window as any).showOpenFilePicker({
       types: [{ description: 'Bowtie Project', accept: { 'application/json': ['.bowtie', '.json'] } }],
       multiple: false
-    }) as FileSystemFileHandle[]
+    })
     const file = await handle.getFile()
     const data = await file.text()
     return { success: true, data, handle }
@@ -48,14 +47,8 @@ export async function openProject(): Promise<{ success: boolean; data?: string; 
 
 // ── Attachment pick / open ───────────────────────────────────────────────────
 
-const DRAWING_TYPES = [{
-  description: 'Drawing / Document',
-  accept: { '*/*': ['.pdf', '.png', '.jpg', '.jpeg', '.svg', '.tif', '.tiff', '.docx', '.dwg', '.dxf'] as `.${string}`[] }
-}]
-const HAZID_TYPES = [{
-  description: 'HAZID Spreadsheet',
-  accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xls', '.xlsm', '.csv'] as `.${string}`[] }
-}]
+const DRAWING_TYPES = [{ description: 'Drawing / Document', accept: { '*/*': ['.pdf', '.png', '.jpg', '.jpeg', '.svg', '.tif', '.tiff', '.docx', '.dwg', '.dxf'] } }]
+const HAZID_TYPES = [{ description: 'HAZID Spreadsheet', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx', '.xls', '.xlsm', '.csv'] } }]
 
 export async function pickAttachment(
   category: 'drawing' | 'hazid'
@@ -64,7 +57,7 @@ export async function pickAttachment(
     const [handle] = await (window as any).showOpenFilePicker({
       types: category === 'drawing' ? DRAWING_TYPES : HAZID_TYPES,
       multiple: false
-    }) as FileSystemFileHandle[]
+    })
     const file: File = await handle.getFile()
     const buf = await file.arrayBuffer()
     const bytes = new Uint8Array(buf)
@@ -88,9 +81,7 @@ export function openAttachment({ name, ext, dataBase64 }: { name: string; ext: s
   const a = document.createElement('a')
   a.href = url
   a.download = `${name}.${ext}`
-  document.body.appendChild(a)
   a.click()
-  document.body.removeChild(a)
   setTimeout(() => URL.revokeObjectURL(url), 10000)
 }
 
