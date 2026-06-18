@@ -15,5 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Export the active bowtie PNG (data URL) to a chosen path.
   exportPng: (dataUrl: string, name: string) => ipcRenderer.invoke('export-png', dataUrl, name),
   // Export the project's barriers & mitigations to an Excel report.
-  exportExcel: (json: string) => ipcRenderer.invoke('export-excel', json)
+  exportExcel: (json: string) => ipcRenderer.invoke('export-excel', json),
+  // Parse a HAZID Excel (base64) and return structured rows for the import modal.
+  parseHazid: (base64: string) => ipcRenderer.invoke('parse-hazid', base64)
 })

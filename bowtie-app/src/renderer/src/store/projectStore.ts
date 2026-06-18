@@ -140,6 +140,9 @@ interface WorkspaceState {
     mitigationId: string
   ) => void
 
+  // Batch-create bowtie stubs from HAZID import
+  batchAddBowties: (projectId: string, stubs: Array<{ name: string; hazardId: string; hazardName: string; topEvent: string }>) => void
+
   // Selection
   setSelectedNode: (node: SelectedNodeType | null) => void
 
@@ -399,6 +402,21 @@ export const useProjectStore = create<WorkspaceState>()(
           const bt = findBowtie(s, projectId, bowtieId)
           const con = bt?.consequences.find((c) => c.id === consequenceId)
           if (con) con.mitigations = con.mitigations.filter((m) => m.id !== mitigationId)
+        }),
+
+      batchAddBowties: (projectId, stubs) =>
+        set((s) => {
+          const p = find(s, projectId)
+          if (!p) return
+          stubs.forEach((stub) => {
+            const bt = createDefaultBowtie(stub.name, p.titleBlock)
+            bt.hazard = { hazardId: stub.hazardId, name: stub.hazardName }
+            bt.topEvent.label = stub.topEvent || 'Top Event'
+            p.bowties.push(bt)
+          })
+          const last = p.bowties[p.bowties.length - 1]
+          if (last) s.activeView = { kind: 'bowtie', projectId, bowtieId: last.id }
+          s.selectedNode = null
         }),
 
       setSelectedNode: (node) =>

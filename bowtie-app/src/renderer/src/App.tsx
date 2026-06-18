@@ -7,11 +7,16 @@ import { TitleBlock } from './components/TitleBlock'
 import { NodeEditPanel } from './components/panels/NodeEditPanel'
 import { NewProjectModal } from './components/NewProjectModal'
 import { ProjectSettingsView, BowtieSettingsView } from './components/SettingsView'
+import { HazidImportModal } from './components/HazidImportModal'
 
 export default function App(): React.ReactElement {
   const store = useProjectStore()
   const activeView = useProjectStore((s) => s.activeView)
   const [showNewProject, setShowNewProject] = useState(false)
+  const [hazidImport, setHazidImport] = useState<{
+    projectId: string
+    attachment: { name: string; dataBase64: string }
+  } | null>(null)
 
   const handleCreate = (input: NewProjectInput): void => {
     store.addProject(createProjectObject(input))
@@ -78,11 +83,22 @@ export default function App(): React.ReactElement {
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-100">
       <Toolbar onNewProject={() => setShowNewProject(true)} onOpenProject={handleOpenProject} />
       <div className="flex flex-1 overflow-hidden">
-        <ProjectSidebar onNewProject={() => setShowNewProject(true)} onOpenProject={handleOpenProject} />
+        <ProjectSidebar
+          onNewProject={() => setShowNewProject(true)}
+          onOpenProject={handleOpenProject}
+          onImportHazid={(projectId, attachment) => setHazidImport({ projectId, attachment })}
+        />
         {renderMain()}
       </div>
       {showNewProject && (
         <NewProjectModal onCreate={handleCreate} onCancel={() => setShowNewProject(false)} />
+      )}
+      {hazidImport && (
+        <HazidImportModal
+          projectId={hazidImport.projectId}
+          attachment={hazidImport.attachment}
+          onClose={() => setHazidImport(null)}
+        />
       )}
     </div>
   )

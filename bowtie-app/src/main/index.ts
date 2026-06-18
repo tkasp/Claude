@@ -4,6 +4,7 @@ import { promises as fs } from 'fs'
 import { tmpdir } from 'os'
 import { randomUUID } from 'crypto'
 import { generateExcel } from './export/excelExporter'
+import { parseHazidExcel } from './export/hazidParser'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -114,6 +115,16 @@ ipcMain.handle('export-png', async (_e, dataUrl: string, name: string) => {
   await fs.writeFile(filePath, Buffer.from(base64, 'base64'))
   shell.showItemInFolder(filePath)
   return { success: true, filePath }
+})
+
+// Parse a HAZID Excel file (base64) and return its rows for the import modal.
+ipcMain.handle('parse-hazid', async (_e, base64: string) => {
+  try {
+    const result = await parseHazidExcel(base64)
+    return { success: true, result }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
 })
 
 // Export the project's barriers & mitigations to an Excel report.

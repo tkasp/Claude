@@ -10,7 +10,8 @@ import {
   Settings,
   Copy,
   Trash2,
-  X
+  X,
+  Wand2
 } from 'lucide-react'
 import { useProjectStore } from '../store/projectStore'
 import type { AttachmentCategory, Project } from '../store/types'
@@ -18,9 +19,10 @@ import type { AttachmentCategory, Project } from '../store/types'
 interface SidebarProps {
   onNewProject: () => void
   onOpenProject: () => void
+  onImportHazid: (projectId: string, attachment: { name: string; dataBase64: string }) => void
 }
 
-export function ProjectSidebar({ onNewProject, onOpenProject }: SidebarProps): React.ReactElement {
+export function ProjectSidebar({ onNewProject, onOpenProject, onImportHazid }: SidebarProps): React.ReactElement {
   const projects = useProjectStore((s) => s.projects)
   const activeView = useProjectStore((s) => s.activeView)
   const store = useProjectStore()
@@ -85,6 +87,7 @@ export function ProjectSidebar({ onNewProject, onOpenProject }: SidebarProps): R
             activeBowtieId={activeBowtieId}
             onAddAttachment={handleAddAttachment}
             onOpenAttachment={openAttachment}
+            onImportHazid={(att) => onImportHazid(project.id, att)}
           />
         ))}
       </div>
@@ -128,7 +131,8 @@ function ProjectTree({
   toggle,
   activeBowtieId,
   onAddAttachment,
-  onOpenAttachment
+  onOpenAttachment,
+  onImportHazid
 }: {
   project: Project
   isOpen: (key: string, fallback?: boolean) => boolean
@@ -136,6 +140,7 @@ function ProjectTree({
   activeBowtieId: string | null
   onAddAttachment: (projectId: string, category: AttachmentCategory) => void
   onOpenAttachment: (projectId: string, attachmentId: string) => void
+  onImportHazid: (att: { name: string; dataBase64: string }) => void
 }): React.ReactElement {
   const store = useProjectStore()
   const pKey = `p:${project.id}`
@@ -248,16 +253,30 @@ function ProjectTree({
                 label={a.name}
                 onClick={() => onOpenAttachment(project.id, a.id)}
                 actions={
-                  <button
-                    title="Remove"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      store.removeAttachment(project.id, 'hazid', a.id)
-                    }}
-                    className="text-gray-500 hover:text-red-600"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  <>
+                    {a.dataBase64 && (
+                      <button
+                        title="Generate bowties from this HAZID"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (a.dataBase64) onImportHazid({ name: a.name, dataBase64: a.dataBase64 })
+                        }}
+                        className="text-gray-500 hover:text-purple-600"
+                      >
+                        <Wand2 size={12} />
+                      </button>
+                    )}
+                    <button
+                      title="Remove"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        store.removeAttachment(project.id, 'hazid', a.id)
+                      }}
+                      className="text-gray-500 hover:text-red-600"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </>
                 }
               />
             ))}
