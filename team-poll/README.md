@@ -47,7 +47,8 @@ npm run dev                             # http://localhost:8787
 - Dates: each is ✓ works, ✗ definitely doesn't, or blank (unsure). Ranked by most ✓, then fewest ✗.
   Headcount adds the +1s of people who marked ✓. "None of these dates work" counts as ✗ on every date.
 - Activities: ranked, 1st = 3 points, 2nd = 2, 3rd = 1. Ties break on first-choice votes.
-  Write-in "Other" ideas are grouped by matching text (ignoring case).
+  A write-in "Other" idea becomes a shared "team idea" option that everyone else can pick and rank
+  (grouped by matching text, ignoring case). It stays listed while anyone has it on their ballot.
 - Results are visible only after voting (a signed cookie set on submit). A voter's previous answers are
   pre-filled only on the device they voted from.
 - Total guests = attendees + attendees bringing a significant other.

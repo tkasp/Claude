@@ -11,7 +11,7 @@ export default {
     const roster = parseRoster(env.ROSTER);
     try {
       if (request.method === "GET" && pathname === "/") return html(votePage());
-      if (request.method === "GET" && pathname === "/api/config") return json(publicConfig());
+      if (request.method === "GET" && pathname === "/api/config") return json(await publicConfig(env, roster));
       if (request.method === "GET" && pathname === "/api/me") return getMe(env, request, url, roster);
       if (request.method === "POST" && pathname === "/api/vote") return submitVote(env, request, roster);
       if (request.method === "GET" && (pathname === "/results" || pathname === "/api/results")) {
@@ -46,8 +46,26 @@ function parseRoster(raw) {
   return new Set(String(raw || "").split(/[\s,;]+/).map(normalizeEmail).filter(Boolean));
 }
 
-function publicConfig() {
-  return { title: TITLE, finalizeNote: FINALIZE_NOTE, dates: DATES, events: EVENTS };
+async function publicConfig(env, roster) {
+  const ideas = [...teamIdeas(await loadVotes(env, roster)).values()];
+  return { title: TITLE, finalizeNote: FINALIZE_NOTE, dates: DATES, events: [...EVENTS, ...ideas] };
+}
+
+// A write-in "Other" idea becomes a shared option ("w:" + its normalized text) that everyone can pick.
+function ideaId(text) {
+  return "w:" + String(text).toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+// Every write-in someone has entered, plus any idea still picked by someone after its author changed theirs.
+function teamIdeas(votes) {
+  const ideas = new Map();
+  const add = (id, label) => { if (!ideas.has(id)) ideas.set(id, { id, label, idea: true }); };
+  const going = votes.filter((v) => v.attending);
+  for (const v of [...going].sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))) {
+    if (v.events.includes(OTHER) && v.otherText) add(ideaId(v.otherText), v.otherText);
+  }
+  for (const v of going) for (const id of v.events) if (id.startsWith("w:")) add(id, id.slice(2));
+  return ideas;
 }
 
 function rowToVote(r) {
@@ -119,15 +137,17 @@ async function submitVote(env, request, roster) {
       if (datesYes.length === 0) return json({ error: "Mark at least one date that works, or tick \"None of these dates work\"." }, 400);
     }
 
-    const eventIds = new Set([...EVENTS.map((e) => e.id), OTHER]);
+    const ideas = teamIdeas(await loadVotes(env, roster));
+    const eventIds = new Set([...EVENTS.map((e) => e.id), ...ideas.keys(), OTHER]);
     events = (Array.isArray(body.events) ? body.events : []).filter(Boolean);
     if (events.length === 0) return json({ error: "Pick at least your 1st choice event." }, 400);
     if (events.length > 3 || events.some((id) => !eventIds.has(id)) || new Set(events).size !== events.length) {
       return json({ error: "Event choices must be up to 3 different options." }, 400);
     }
     if (events.includes(OTHER)) {
-      otherText = String(body.otherText || "").trim().slice(0, 120);
+      otherText = String(body.otherText || "").trim().replace(/\s+/g, " ").slice(0, 120);
       if (!otherText) return json({ error: "Describe your \"Other\" idea." }, 400);
+      if (events.includes(ideaId(otherText))) return json({ error: "Your \"Other\" idea is already one of your picks." }, 400);
     }
   }
 
@@ -164,16 +184,11 @@ function tally(votes, roster) {
     };
   }).sort((a, b) => b.works - a.works || a.cant - b.cant || b.headcount - a.headcount);
 
-  // Built-in events, plus each distinct write-in as its own row.
-  const options = new Map(EVENTS.map((e) => [e.id, { id: e.id, label: e.label, ranks: [0, 0, 0] }]));
+  // Built-in events, plus each team idea (write-in) as its own row. An author's "Other" counts for their idea.
+  const options = new Map([...EVENTS, ...teamIdeas(votes).values()].map((e) => [e.id, { ...e, ranks: [0, 0, 0] }]));
   for (const v of going) {
     v.events.forEach((id, i) => {
-      let key = id;
-      if (id === OTHER) {
-        key = "other:" + v.otherText.toLowerCase();
-        if (!options.has(key)) options.set(key, { id: key, label: "Other: " + v.otherText, ranks: [0, 0, 0], other: true });
-      }
-      const opt = options.get(key);
+      const opt = options.get(id === OTHER ? ideaId(v.otherText) : id);
       if (opt) opt.ranks[i]++;
     });
   }
@@ -231,7 +246,9 @@ function dateLabel(id) {
 }
 
 function eventLabel(v, id) {
-  return id === OTHER ? "Other: " + v.otherText : EVENTS.find((e) => e.id === id)?.label ?? id;
+  if (id === OTHER) return "Team idea: " + v.otherText;
+  if (id.startsWith("w:")) return "Team idea: " + id.slice(2);
+  return EVENTS.find((e) => e.id === id)?.label ?? id;
 }
 
 function csv(votes) {
@@ -274,6 +291,7 @@ h2 { font-size:1.05rem; margin:0 0 12px; }
 .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:16px; }
 .note { background:var(--accent-soft); border-radius:8px; padding:10px 12px; margin:12px 0 0; font-weight:600; }
 .intro ol { margin:0; padding-left:20px; }
+.tip { margin:12px 0 0; color:var(--muted); }
 .intro li { margin-bottom:6px; }
 label.opt { display:flex; gap:10px; align-items:center; padding:10px 12px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; cursor:pointer; }
 label.opt:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); }
@@ -334,10 +352,15 @@ function votePage() {
     <li>Enter your work email. It's one vote per person, and you can come back and change your answers any time.</li>
     <li>Tell us if you'd come, and whether you'd bring a significant other.</li>
     <li>Go through the dates: tap <b>✓</b> for dates that work and <b>✗</b> for dates that definitely don't. Leave a date blank if you're not sure.</li>
-    <li>Rank your top 3 activities. Pick "Other" to suggest your own.</li>
+    <li>Rank your top 3 activities. Pick "Other" to suggest your own, and it's added to the list for everyone.</li>
     <li>Hit Submit to see the live results. Results only show totals, never who voted for what.</li>
   </ol>
   <p class="note">${esc(FINALIZE_NOTE)}</p>
+  <p class="tip">New activity ideas from the team show up in the list as people suggest them. You may want to check back
+    before the deadline in case one comes up that you'd rather rank. You can change your vote any time.</p>
+  <p class="tip hidden" id="ideas"></p>
+  <p class="tip">We'll do our best to pick a date and activity that work for everyone. Final booking depends on availability,
+    so we'll go down the list until we can lock something in.</p>
 </div>
 
 <div class="card" id="step-email">
@@ -399,11 +422,16 @@ async function init() {
     '<button type="button" class="yes" aria-pressed="false" aria-label="' + esc(d.label) + ' works">✓</button>' +
     '<button type="button" class="no" aria-pressed="false" aria-label="' + esc(d.label) + ' does not work">✗</button></div>').join("");
   const opts = '<option value="">-- choose --</option>' +
-    cfg.events.map((e) => '<option value="' + e.id + '">' + esc(e.label) + '</option>').join("") +
+    cfg.events.map((e) => '<option value="' + esc(e.id) + '">' + esc(e.label) + (e.idea ? " (team idea)" : "") + '</option>').join("") +
     '<option value="' + OTHER + '">Other (write your own)</option>';
   $("events").innerHTML = ["1st", "2nd", "3rd"].map((r, i) =>
     '<div class="rank"><span>' + r + '</span><select name="event' + i + '">' + opts + '</select></div>').join("");
   document.querySelectorAll("#events select").forEach((s) => s.addEventListener("change", toggleOther));
+  const ideas = cfg.events.filter((e) => e.idea);
+  if (ideas.length) {
+    $("ideas").innerHTML = "<b>Team ideas so far:</b> " + ideas.map((e) => esc(e.label)).join(", ");
+    $("ideas").classList.remove("hidden");
+  }
 }
 
 function setDate(id, val) {
@@ -548,7 +576,7 @@ async function load() {
     (r.noDatesWork ? '<p class="muted">' + r.noDatesWork + ' attendee(s) said none of these dates work.</p>' : "");
   const maxPts = Math.max(1, ...r.events.map((e) => e.points));
   document.getElementById("events").innerHTML = r.events.some((e) => e.points) ?
-    r.events.map((e) => bar(e.label, e.points + " pts · " + e.firsts + " first-choice", [["", (100 * e.points) / maxPts]])).join("") :
+    r.events.map((e) => bar(e.label + (e.idea ? " (team idea)" : ""), e.points + " pts · " + e.firsts + " first-choice", [["", (100 * e.points) / maxPts]])).join("") :
     '<p class="muted">No votes yet.</p>';
 }
 load();
