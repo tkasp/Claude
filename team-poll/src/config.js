@@ -31,4 +31,6 @@ export const EVENTS = [
   { id: "mystery", label: "Murder mystery dinner" },
   { id: "theatre", label: "Dinner theatre" },
   { id: "escape", label: "Dinner & escape rooms" },
+  { id: "lounge", label: "Dinner and lounge after" },
+  { id: "dinner", label: "Just dinner - no activities" },
 ];
