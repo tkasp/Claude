@@ -6,4 +6,4 @@ compatibility_date = "2025-09-01"
 binding = "DB"
 database_name = "team-poll"
 # Paste the id printed by `npx wrangler d1 create team-poll`
-database_id = "REPLACE_WITH_YOUR_D1_ID"
+database_id = "a8b57476-0bec-4fb7-80a8-da89332ff926"
