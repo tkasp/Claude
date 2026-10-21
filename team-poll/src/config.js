@@ -1,34 +1,34 @@
 // Edit this file to set up the poll, then redeploy.
+// The team email list is NOT here (this repo is public). It's the ROSTER secret: see README.
 
 export const TITLE = "Team Event Poll";
 
-// Voting closes at this time (ISO 8601 with your time zone offset). Set to null to never close.
-export const CLOSES_AT = "2026-10-23T17:00:00-05:00";
+// Shown on the intro and results pages. Voting stays open; this is just when we'll decide.
+export const FINALIZE_NOTE = "We'll finalize on Friday, Oct 23 at 2:00 pm MT.";
 
 // Each date needs a short unique id and the label people see.
+// Don't change an id after people have voted, or their answers for it drop out.
 export const DATES = [
-  { id: "d1", label: "Fri, Nov 13" },
-  { id: "d2", label: "Sat, Nov 14" },
-  { id: "d3", label: "Fri, Nov 20" },
-  { id: "d4", label: "Sat, Nov 21" },
-  { id: "d5", label: "Fri, Dec 4" },
+  { id: "nov19", label: "Thu, Nov 19" },
+  { id: "nov20", label: "Fri, Nov 20" },
+  { id: "nov21", label: "Sat, Nov 21" },
+  { id: "nov25", label: "Wed, Nov 25" },
+  { id: "nov26", label: "Thu, Nov 26" },
+  { id: "nov28", label: "Sat, Nov 28" },
+  { id: "dec02", label: "Wed, Dec 2" },
+  { id: "dec03", label: "Thu, Dec 3" },
+  { id: "dec04", label: "Fri, Dec 4" },
+  { id: "dec09", label: "Wed, Dec 9" },
+  { id: "dec10", label: "Thu, Dec 10" },
+  { id: "dec11", label: "Fri, Dec 11" },
 ];
 
-// 6-10 events. People rank their top 3: 1st = 3 pts, 2nd = 2, 3rd = 1.
+// People rank their top 3: 1st = 3 pts, 2nd = 2, 3rd = 1. They can also write in one "Other" idea.
 export const EVENTS = [
-  { id: "e1", label: "Bowling" },
-  { id: "e2", label: "Escape room" },
-  { id: "e3", label: "Group dinner" },
-  { id: "e4", label: "Axe throwing" },
-  { id: "e5", label: "Top golf" },
-  { id: "e6", label: "Cooking class" },
-  { id: "e7", label: "Comedy show" },
-  { id: "e8", label: "Brewery tour" },
-];
-
-// Only these emails can vote. The count drives "X of N have voted". Lowercase is fine; matching ignores case.
-export const ROSTER = [
-  "alice@example.com",
-  "bob@example.com",
-  "carol@example.com",
+  { id: "axe-bowl", label: "Dinner, then axe throwing or bowling" },
+  { id: "cooking", label: "Cooking class, then a bar after" },
+  { id: "banquet", label: "Banquet dinner with bowling/games all-in-one" },
+  { id: "mystery", label: "Murder mystery dinner" },
+  { id: "theatre", label: "Dinner theatre" },
+  { id: "escape", label: "Dinner & escape rooms" },
 ];
