@@ -1,0 +1,9 @@
+name = "team-poll"
+main = "src/worker.js"
+compatibility_date = "2025-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "team-poll"
+# Paste the id printed by `npx wrangler d1 create team-poll`
+database_id = "REPLACE_WITH_YOUR_D1_ID"
