@@ -1,7 +1,7 @@
 // Edit this file to set up the poll, then redeploy.
 // The team email list is NOT here (this repo is public). It's the ROSTER secret: see README.
 
-export const TITLE = "Team Event Poll";
+export const TITLE = "Ops Eng Xmas Extravaganza - Referendum";
 
 // Shown on the intro and results pages. Voting stays open; this is just when we'll decide.
 export const FINALIZE_NOTE = "We'll finalize on Friday, Oct 23 at 2:00 pm MT.";

@@ -344,7 +344,6 @@ function votePage() {
   return shell(
     TITLE,
     `<h1>${esc(TITLE)}</h1>
-<p class="sub">Help us pick a date and an activity for our team event.</p>
 
 <div class="card intro" id="intro">
   <h2>How it works</h2>
